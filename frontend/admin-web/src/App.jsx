@@ -9,18 +9,40 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
 } from '@ant-design/icons'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, Link } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
+import ForbiddenPage from './pages/Forbidden'
+import AdminPage from './pages/AdminPage'
+import ManagerPage from './pages/ManagerPage'
+import StorePage from './pages/StorePage'
+import SupplyCoordinatorPage from './pages/SupplyCoordinatorPage'
+import KitchenStaffPage from './pages/KitchenStaffPage'
 import './App.css'
 
 const { Header, Content, Footer, Sider } = Layout
 const { Title, Text } = Typography
 
-// Auth Wrapper
-const ProtectedRoute = ({ children }) => {
+// Auth + role wrapper
+// supports both element wrapping (children) and nested routes (Outlet)
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
-  return children;
+
+  if (allowedRoles) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const roleCode = user?.role?.code || null;
+    if (!roleCode || !allowedRoles.includes(roleCode)) {
+      return <Navigate to="/forbidden" replace />;
+    }
+  }
+
+  // if children provided (used as element wrapper) render them
+  if (children) {
+    return children;
+  }
+
+  // otherwise assume this is a parent route and render nested routes
+  return <Outlet />;
 };
 
 const DashboardContent = () => {
@@ -51,12 +73,15 @@ function MainLayout() {
     navigate('/login');
   };
 
+  // build menu items conditionally based on role
   const items = [
-    { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
-    { key: 'users', icon: <UserOutlined />, label: 'Hệ thống' },
-    { key: 'inventory', icon: <ShopOutlined />, label: 'Kho & Batch' },
-    { key: 'orders', icon: <FileTextOutlined />, label: 'Đơn hàng' },
-  ]
+    { key: 'dashboard', icon: <DashboardOutlined />, label: <Link to="/">Dashboard</Link> },
+    { key: 'admin', icon: <UserOutlined />, label: <Link to="/admin">Admin Area</Link>, roles: ['ADMIN'] },
+    { key: 'manager', icon: <ShopOutlined />, label: <Link to="/manager">Manager Area</Link>, roles: ['MANAGER'] },
+    { key: 'supply', icon: <ShopOutlined />, label: <Link to="/supply">Supply Coord</Link>, roles: ['SUPPLY_COORDINATOR'] },
+    { key: 'kitchen', icon: <ShopOutlined />, label: <Link to="/kitchen">Kitchen Staff</Link>, roles: ['CENTRAL_KITCHEN_STAFF'] },
+    { key: 'store', icon: <FileTextOutlined />, label: <Link to="/store">Store Area</Link>, roles: ['STORE_STAFF'] },
+  ].filter(item => !item.roles || item.roles.includes(user.role?.code));
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -100,7 +125,8 @@ function MainLayout() {
             <Breadcrumb.Item>Admin</Breadcrumb.Item>
             <Breadcrumb.Item>Dashboard</Breadcrumb.Item>
           </Breadcrumb>
-          <DashboardContent />
+          {/* outlet for nested routes */}
+          <Outlet />
         </Content>
         <Footer style={{ textAlign: 'center', color: '#8c8c8c' }}>CNPM_CS3 ©{new Date().getFullYear()}</Footer>
       </Layout>
@@ -113,11 +139,56 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={
-            <ProtectedRoute>
-                <MainLayout />
-            </ProtectedRoute>
-        } />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+        {/* authenticated area */}
+        <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route index element={<DashboardContent />} />
+
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="manager"
+              element={
+                <ProtectedRoute allowedRoles={["MANAGER"]}>
+                  <ManagerPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="supply"
+              element={
+                <ProtectedRoute allowedRoles={["SUPPLY_COORDINATOR"]}>
+                  <SupplyCoordinatorPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="kitchen"
+              element={
+                <ProtectedRoute allowedRoles={["CENTRAL_KITCHEN_STAFF"]}>
+                  <KitchenStaffPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="store"
+              element={
+                <ProtectedRoute allowedRoles={["STORE_STAFF"]}>
+                  <StorePage />
+                </ProtectedRoute>
+              }
+            />
+        </Route>
       </Routes>
     </BrowserRouter>
   )
