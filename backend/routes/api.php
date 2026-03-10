@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 
+// Public routes
 Route::post('/login', [AuthController::class, 'login']);
+<<<<<<< HEAD
 Route::post('/logout', [AuthController::class, 'logout']);
 Route::get('/me', [AuthController::class, 'me']);
 /*
@@ -37,3 +39,11 @@ Route::apiResource('items', ItemController::class);
 use App\Http\Controllers\Api\RecipeController;
 
 Route::apiResource('recipes', RecipeController::class);
+=======
+
+// Protected routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+});
+>>>>>>> 326dceb641eebeb4e6bf2714c6d3aa968e9693bd
