@@ -25,13 +25,13 @@ class AuthController extends Controller
             ], 401);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Đăng nhập thành công',
-            'data' => [
-                'user' => $user,
-            ],
-        ]);
+     return response()->json([
+    'success' => true,
+    'message' => 'Đăng nhập thành công',
+    'data' => [
+        'user' => $user->load('role'),
+    ],
+]);
     }
 
     public function logout()
