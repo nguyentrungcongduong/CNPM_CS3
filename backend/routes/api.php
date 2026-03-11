@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ManagerInventoryController;
 use App\Http\Controllers\Api\StoreInventoryController;
+use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\RecipeController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -24,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('/stores', StoreController::class);
         Route::apiResource('/users', UserController::class);
         Route::apiResource('/kitchens', KitchenController::class);
+        Route::apiResource('/items', ItemController::class);
+        Route::apiResource('/recipes', RecipeController::class);
     });
 
     // ---- Manager Routes ----
