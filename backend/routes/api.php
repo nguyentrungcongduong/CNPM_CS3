@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\ManagerInventoryController;
+use App\Http\Controllers\Api\StoreInventoryController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -17,17 +19,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---- Admin Routes ----
     Route::prefix('admin')->group(function () {
-        // Roles (read-only, for dropdowns)
         Route::get('/roles', [RoleController::class, 'index']);
-
-        // Stores
         Route::get('/stores/list', [StoreController::class, 'list']);
         Route::apiResource('/stores', StoreController::class);
-
-        // Users
         Route::apiResource('/users', UserController::class);
-
-        // Kitchens (Central Kitchen = Warehouse type KITCHEN)
         Route::apiResource('/kitchens', KitchenController::class);
+    });
+
+    // ---- Manager Routes ----
+    Route::prefix('manager')->group(function () {
+        // Tồn kho Bếp Trung Tâm
+        Route::get('/inventory', [ManagerInventoryController::class, 'index']);
+        Route::get('/inventory/transactions', [ManagerInventoryController::class, 'transactions']);
+    });
+
+    // ---- Store Routes ----
+    Route::prefix('store')->group(function () {
+        // Tồn kho của một cửa hàng
+        Route::get('/inventory/{store_id}', [StoreInventoryController::class, 'show']);
+        Route::get('/inventory/{store_id}/transactions', [StoreInventoryController::class, 'transactions']);
     });
 });

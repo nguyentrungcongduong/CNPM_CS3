@@ -23,6 +23,8 @@ import UsersPage from './pages/admin/UsersPage'
 import StoresPage from './pages/admin/StoresPage'
 import KitchensPage from './pages/admin/KitchensPage'
 import SystemConfigPage from './pages/admin/SystemConfigPage'
+import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
+import StoreInventoryPage from './pages/manager/StoreInventoryPage'
 import './App.css'
 
 const { Header, Content, Footer, Sider } = Layout
@@ -67,6 +69,8 @@ const BREADCRUMB_MAP = {
   '/admin/kitchens': ['Admin', 'Quản lý Bếp'],
   '/admin/config': ['Admin', 'Cấu hình hệ thống'],
   '/manager': ['Manager Area'],
+  '/manager/kitchen-inventory': ['Manager', 'Tồn kho Bếp Trung Tâm'],
+  '/manager/store-inventory': ['Manager', 'Tồn kho Cửa hàng'],
   '/supply': ['Supply Coordinator'],
   '/kitchen': ['Kitchen Staff'],
   '/store': ['Store Area'],
@@ -94,6 +98,13 @@ function MainLayout() {
     { key: '/admin/config',  icon: <SettingOutlined />,label: <Link to="/admin/config">Cấu hình</Link> },
   ];
 
+  // Manager submenu items
+  const managerSubItems = [
+    { key: '/manager', icon: <ShopOutlined />, label: <Link to="/manager">Manager Home</Link> },
+    { key: '/manager/kitchen-inventory', icon: <HomeOutlined />, label: <Link to="/manager/kitchen-inventory">Tồn kho Bếp TT</Link> },
+    { key: '/manager/store-inventory', icon: <ShopOutlined />, label: <Link to="/manager/store-inventory">Tồn kho Cửa hàng</Link> },
+  ];
+
   // Build sidebar items based on role
   const items = [
     { key: '/', icon: <DashboardOutlined />, label: <Link to="/">Dashboard</Link> },
@@ -103,7 +114,12 @@ function MainLayout() {
       label: 'Quản trị',
       children: adminSubItems,
     }] : []),
-    ...(roleCode === 'MANAGER' ? [{ key: '/manager', icon: <ShopOutlined />, label: <Link to="/manager">Manager Area</Link> }] : []),
+    ...(roleCode === 'MANAGER' ? [{
+      key: 'manager-group',
+      icon: <FileTextOutlined />,
+      label: 'Quản lý',
+      children: managerSubItems,
+    }] : []),
     ...(roleCode === 'SUPPLY_COORDINATOR' ? [{ key: '/supply', icon: <ShopOutlined />, label: <Link to="/supply">Supply Coord</Link> }] : []),
     ...(roleCode === 'CENTRAL_KITCHEN_STAFF' ? [{ key: '/kitchen', icon: <HomeOutlined />, label: <Link to="/kitchen">Kitchen Staff</Link> }] : []),
     ...(roleCode === 'STORE_STAFF' ? [{ key: '/store', icon: <FileTextOutlined />, label: <Link to="/store">Store Area</Link> }] : []),
@@ -192,8 +208,12 @@ function App() {
           <Route path="admin/kitchens" element={<ProtectedRoute allowedRoles={['ADMIN']}><KitchensPage /></ProtectedRoute>} />
           <Route path="admin/config"  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemConfigPage /></ProtectedRoute>} />
 
-          {/* Other role routes */}
+          {/* Manager routes */}
           <Route path="manager" element={<ProtectedRoute allowedRoles={['MANAGER']}><ManagerPage /></ProtectedRoute>} />
+          <Route path="manager/kitchen-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><KitchenInventoryPage /></ProtectedRoute>} />
+          <Route path="manager/store-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><StoreInventoryPage /></ProtectedRoute>} />
+
+          {/* Other role routes */}
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
           <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
           <Route path="store"   element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StorePage /></ProtectedRoute>} />
