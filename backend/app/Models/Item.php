@@ -25,4 +25,9 @@ class Item extends Model
     {
         return $this->hasMany(Inventory::class);
     }
+
+    public function recipeItems()
+    {
+        return $this->hasMany(RecipeItem::class);
+    }
 }

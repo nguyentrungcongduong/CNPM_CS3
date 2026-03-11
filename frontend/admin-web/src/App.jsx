@@ -23,6 +23,7 @@ import UsersPage from './pages/admin/UsersPage'
 import StoresPage from './pages/admin/StoresPage'
 import KitchensPage from './pages/admin/KitchensPage'
 import SystemConfigPage from './pages/admin/SystemConfigPage'
+import RecipesPage from './pages/admin/RecipesPage'
 import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
 import StoreInventoryPage from './pages/manager/StoreInventoryPage'
 import './App.css'
@@ -67,6 +68,7 @@ const BREADCRUMB_MAP = {
   '/admin/users': ['Admin', 'Quản lý Users'],
   '/admin/stores': ['Admin', 'Quản lý Cửa hàng'],
   '/admin/kitchens': ['Admin', 'Quản lý Bếp'],
+  '/admin/recipes': ['Admin', 'Quản lý Công thức'],
   '/admin/config': ['Admin', 'Cấu hình hệ thống'],
   '/manager': ['Manager Area'],
   '/manager/kitchen-inventory': ['Manager', 'Tồn kho Bếp Trung Tâm'],
@@ -95,6 +97,7 @@ function MainLayout() {
     { key: '/admin/users',   icon: <TeamOutlined />,   label: <Link to="/admin/users">Người dùng</Link> },
     { key: '/admin/stores',  icon: <ShopOutlined />,   label: <Link to="/admin/stores">Cửa hàng</Link> },
     { key: '/admin/kitchens',icon: <HomeOutlined />,   label: <Link to="/admin/kitchens">Bếp Trung Tâm</Link> },
+    { key: '/admin/recipes', icon: <FileTextOutlined />,label: <Link to="/admin/recipes">Công thức</Link> },
     { key: '/admin/config',  icon: <SettingOutlined />,label: <Link to="/admin/config">Cấu hình</Link> },
   ];
 
@@ -206,6 +209,7 @@ function App() {
           <Route path="admin/users"   element={<ProtectedRoute allowedRoles={['ADMIN']}><UsersPage /></ProtectedRoute>} />
           <Route path="admin/stores"  element={<ProtectedRoute allowedRoles={['ADMIN']}><StoresPage /></ProtectedRoute>} />
           <Route path="admin/kitchens" element={<ProtectedRoute allowedRoles={['ADMIN']}><KitchensPage /></ProtectedRoute>} />
+          <Route path="admin/recipes" element={<ProtectedRoute allowedRoles={['ADMIN']}><RecipesPage /></ProtectedRoute>} />
           <Route path="admin/config"  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemConfigPage /></ProtectedRoute>} />
 
           {/* Manager routes */}
