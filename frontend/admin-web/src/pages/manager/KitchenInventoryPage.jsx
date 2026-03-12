@@ -113,7 +113,7 @@ export default function KitchenInventoryPage() {
   const [batchPagi, setBatchPagi] = useState({ current: 1, pageSize: 20, total: 0 });
   
   const [filters, setFilters] = useState({ search: '', warehouse_id: undefined, low_stock: false, batch_status: undefined });
-  const [summaryStats, setSummaryStats] = useState({ total: 0, lowStock: 0, expiring: 0 });
+  const [summaryStats, setSummaryStats] = useState({ total: 0, lowStock: 0, expiring: 0, expired: 0 });
 
   const fetchStock = useCallback(async (page = 1) => {
     setLoading(true);
@@ -125,7 +125,8 @@ export default function KitchenInventoryPage() {
       setSummaryStats({ 
         total: res.data.total, 
         lowStock: res.summary?.low_stock_count || 0,
-        expiring: res.summary?.expiring_count || 0
+        expiring: res.summary?.expiring_soon_count || 0,
+        expired: res.summary?.expired_count || 0
       });
     } finally { setLoading(false); }
   }, [filters, stockPagi.pageSize]);
@@ -163,30 +164,43 @@ export default function KitchenInventoryPage() {
   return (
     <>
       <Title level={3} style={{ marginBottom: 16 }}>Tồn kho Bếp Trung Tâm</Title>
-      <Row gutter={16} style={{ marginBottom: 20 }}>
-        <Col span={6}>
+      <Row gutter={12} style={{ marginBottom: 20 }}>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Tổng mặt hàng" value={summaryStats.total} prefix={<HomeOutlined style={{ color: '#722ed1' }} />} styles={{ content: { color: '#722ed1' } }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Sắp hết hàng" value={summaryStats.lowStock} prefix={<WarningOutlined style={{ color: '#faad14' }} />} styles={{ content: { color: summaryStats.lowStock > 0 ? '#ff4d4f' : '#52c41a' } }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <Statistic title="Sắp hết hạn" value={summaryStats.expiring} prefix={<FieldTimeOutlined style={{ color: '#ff4d4f' }} />} styles={{ content: { color: summaryStats.expiring > 0 ? '#ff4d4f' : '#52c41a' } }} />
+            <Statistic title="Sắp hết hạn" value={summaryStats.expiring} prefix={<FieldTimeOutlined style={{ color: '#faad14' }} />} styles={{ content: { color: summaryStats.expiring > 0 ? '#faad14' : '#52c41a' } }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col flex="1 1 200px">
+          <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <Statistic title="Đã hết hạn" value={summaryStats.expired} prefix={<FieldTimeOutlined style={{ color: '#ff4d4f' }} />} styles={{ content: { color: summaryStats.expired > 0 ? '#ff4d4f' : '#52c41a' } }} />
+          </Card>
+        </Col>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Số bếp" value={kitchens.length} prefix={<HomeOutlined style={{ color: '#1890ff' }} />} styles={{ content: { color: '#1890ff' } }} />
           </Card>
         </Col>
       </Row>
 
-      {summaryStats.expiring > 0 && <Alert type="error" showIcon icon={<FieldTimeOutlined />} title={`Cảnh báo: Có ${summaryStats.expiring} lô hàng sắp hết hạn hoặc đã hết hạn trong 30 ngày tới!`} style={{ marginBottom: 16, borderRadius: 8 }} />}
+      {(summaryStats.expiring > 0 || summaryStats.expired > 0) && (
+        <Alert 
+          type={summaryStats.expired > 0 ? 'error' : 'warning'}
+          showIcon 
+          icon={<FieldTimeOutlined />} 
+          title={`Cảnh báo: Có ${summaryStats.expired} lô đã hết hạn và ${summaryStats.expiring} lô sắp hết hạn!`} 
+          style={{ marginBottom: 16, borderRadius: 8 }} 
+        />
+      )}
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {

@@ -46,7 +46,8 @@ class ManagerInventoryController extends Controller
         $kitchens = Warehouse::where('type', 'KITCHEN')->where('status', 'ACTIVE')
             ->select('id', 'code', 'name')->get();
 
-        $expiringCount = \App\Models\Batch::nearExpiry(30)->whereIn('warehouse_id', $warehouseIds)->count();
+        $expiredCount = \App\Models\Batch::expired()->whereIn('warehouse_id', $warehouseIds)->count();
+        $expiringSoonCount = \App\Models\Batch::expiringSoon(30)->whereIn('warehouse_id', $warehouseIds)->count();
         
         // Low Stock Count: Những mặt hàng mà TỔNG số lượng trong các lô ĐANG SỬ DỤNG (ACTIVE) <= min_stock
         $lowStockCount = 0;
@@ -62,9 +63,10 @@ class ManagerInventoryController extends Controller
             'kitchens' => $kitchens,
             'data'     => $inventory,
             'summary'  => [
-                'total_count'     => $inventory->total(),
-                'low_stock_count' => $lowStockCount,
-                'expiring_count'  => $expiringCount,
+                'total_count'         => $inventory->total(),
+                'low_stock_count'     => $lowStockCount,
+                'expired_count'       => $expiredCount,
+                'expiring_soon_count' => $expiringSoonCount,
             ]
         ]);
     }

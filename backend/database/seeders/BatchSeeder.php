@@ -37,13 +37,13 @@ class BatchSeeder extends Seeder
 
         foreach ($items as $index => $item) {
             // Tạo 3 loại lô cho mỗi mặt hàng: Bình thường, Sắp hết hạn, Đã hết hạn
-            
+
             // 1. Lô bình thường (Còn hạn dài)
             $this->createBatch($kitchen, $item, 100, now()->addMonths(6), 'ACTIVE');
-            
+
             // 2. Lô sắp hết hạn (Trong vòng 5 ngày tới)
             $this->createBatch($kitchen, $item, 50, now()->addDays(5), 'ACTIVE');
-            
+
             // 3. Lô đã hết hạn (Của 10 ngày trước)
             $this->createBatch($kitchen, $item, 20, now()->subDays(10), 'EXPIRED');
         }
@@ -52,7 +52,7 @@ class BatchSeeder extends Seeder
     private function createBatch($warehouse, $item, $qty, $expiryDate, $status)
     {
         $batchCode = 'BAT-' . strtoupper(Str::random(8)) . '-' . date('ymd');
-        
+
         $batch = Batch::create([
             'batch_code' => $batchCode,
             'item_id' => $item->id,
@@ -66,8 +66,8 @@ class BatchSeeder extends Seeder
 
         // Cập nhật tồn kho aggregate
         $inventory = Inventory::firstOrCreate(
-            ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
-            ['quantity_on_hand' => 0, 'quantity_reserved' => 0, 'quantity_available' => 0]
+        ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
+        ['quantity_on_hand' => 0, 'quantity_reserved' => 0, 'quantity_available' => 0]
         );
 
         $oldVal = $inventory->quantity_on_hand;

@@ -41,12 +41,23 @@ class Batch extends Model
     }
 
     /**
-     * Scope for near expiry batches
+     * Scope for expired batches
      */
-    public function scopeNearExpiry($query, $days = 7)
+    public function scopeExpired($query)
+    {
+        return $query->where('status', '!=', 'SOLD_OUT')
+            ->where('quantity', '>', 0)
+            ->where('expiry_date', '<', now());
+    }
+
+    /**
+     * Scope for near expiry batches (but not yet expired)
+     */
+    public function scopeExpiringSoon($query, $days = 30)
     {
         return $query->where('status', 'ACTIVE')
             ->where('quantity', '>', 0)
+            ->where('expiry_date', '>=', now())
             ->where('expiry_date', '<=', now()->addDays($days));
     }
 }
