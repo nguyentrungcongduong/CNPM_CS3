@@ -14,11 +14,26 @@ class BatchSeeder extends Seeder
 {
     public function run(): void
     {
+        // Đảm bảo có Bếp
         $kitchen = Warehouse::where('type', 'KITCHEN')->first();
-        if (!$kitchen) return;
+        if (!$kitchen) {
+            $kitchen = Warehouse::create([
+                'code' => 'WH-CK-01',
+                'name' => 'Bếp Trung Tâm Sài Gòn',
+                'type' => 'KITCHEN',
+                'address' => '123 District 1',
+                'status' => 'ACTIVE'
+            ]);
+        }
 
-        $items = Item::limit(3)->get();
-        if ($items->isEmpty()) return;
+        // Đảm bảo có Item
+        if (Item::count() == 0) {
+            Item::create(['code' => 'ITEM001', 'name' => 'Thịt bò Mỹ', 'type' => 'NGUYÊN LIỆU', 'unit' => 'KG', 'min_stock' => 10, 'status' => 'ACTIVE']);
+            Item::create(['code' => 'ITEM002', 'name' => 'Sữa tươi', 'type' => 'NGUYÊN LIỆU', 'unit' => 'LÍT', 'min_stock' => 20, 'status' => 'ACTIVE']);
+            Item::create(['code' => 'ITEM003', 'name' => 'Bột mì', 'type' => 'NGUYÊN LIỆU', 'unit' => 'KG', 'min_stock' => 15, 'status' => 'ACTIVE']);
+        }
+
+        $items = Item::all();
 
         foreach ($items as $index => $item) {
             // Tạo 3 loại lô cho mỗi mặt hàng: Bình thường, Sắp hết hạn, Đã hết hạn

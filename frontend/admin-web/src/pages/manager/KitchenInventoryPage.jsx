@@ -11,27 +11,23 @@ const TX_LABELS = { IN: '↑ Nhập', OUT: '↓ Xuất', RESERVE: '⚑ Giữ', U
 const BATCH_COLORS = { ACTIVE: 'processing', EXPIRED: 'error', SOLD_OUT: 'default' };
 const BATCH_LABELS = { ACTIVE: 'Đang sử dụng', EXPIRED: 'Hết hạn', SOLD_OUT: 'Hết hàng' };
 
-const StockProgress = ({ available, minStock }) => {
-  const pct = minStock ? Math.min(100, (available / minStock) * 100) : null;
-  const status = pct === null ? null : pct <= 50 ? 'exception' : pct <= 100 ? 'normal' : 'success';
-  return (
-    <div style={{ minWidth: 100 }}>
-      <span style={{ fontWeight: 600 }}>{Number(available).toFixed(2)}</span>
-      {minStock && (
-        <Tooltip title={`Tồn tối thiểu: ${minStock}`}>
-          <Progress percent={Math.round(pct)} size="small" status={status} style={{ marginTop: 2 }} />
-        </Tooltip>
-      )}
-    </div>
-  );
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 };
 
 const BatchTable = ({ data, loading, pagination, onPageChange }) => {
   const columns = [
     { title: 'Mã Lô', dataIndex: 'batch_code', key: 'code', render: (v) => <Tag icon={<BarcodeOutlined />} color="blue">{v}</Tag> },
     { title: 'Tên hàng', key: 'item', render: (_, r) => <div><Text strong>{r.item?.name}</Text><br/><Text type="secondary" style={{fontSize:11}}>{r.item?.code}</Text></div> },
-    { title: 'Tồn kho', dataIndex: 'quantity', key: 'qty', align: 'right', render: (v, r) => <Text strong>{Number(v).toFixed(2)} {r.item?.unit}</Text> },
-    { title: 'Ngày Sản Xuất', dataIndex: 'mfg_date', key: 'mfg', width: 130, render: (v) => v || '—' },
+    { title: 'Số lượng lô', dataIndex: 'quantity', key: 'qty', align: 'right', render: (v, r) => <Text strong>{Number(v).toFixed(2)} {r.item?.unit}</Text> },
+    { title: 'Ngày Sản Xuất', dataIndex: 'mfg_date', key: 'mfg', width: 130, render: (v) => formatDate(v) },
     { 
       title: 'Hạn Sử Dụng', 
       dataIndex: 'expiry_date', 
@@ -40,8 +36,8 @@ const BatchTable = ({ data, loading, pagination, onPageChange }) => {
       render: (v) => {
         if (!v) return '—';
         const isExpired = new Date(v) < new Date();
-        const isNear = !isExpired && (new Date(v) - new Date()) / (1000 * 60 * 60 * 24) <= 7;
-        return <Tag color={isExpired ? 'red' : isNear ? 'orange' : 'green'}>{v}</Tag>;
+        const isNear = !isExpired && (new Date(v) - new Date()) / (1000 * 60 * 60 * 24) <= 30;
+        return <Tag color={isExpired ? 'red' : isNear ? 'orange' : 'green'}>{formatDate(v)}</Tag>;
       }
     },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (v) => <Tag color={BATCH_COLORS[v]}>{BATCH_LABELS[v]}</Tag> },
@@ -101,7 +97,7 @@ export default function KitchenInventoryPage() {
   const [txPagi, setTxPagi] = useState({ current: 1, pageSize: 20, total: 0 });
   const [batchPagi, setBatchPagi] = useState({ current: 1, pageSize: 20, total: 0 });
   
-  const [filters, setFilters] = useState({ search: '', warehouse_id: undefined, low_stock: false });
+  const [filters, setFilters] = useState({ search: '', warehouse_id: undefined, low_stock: false, batch_status: undefined });
   const [summaryStats, setSummaryStats] = useState({ total: 0, lowStock: 0, expiring: 0 });
 
   const fetchStock = useCallback(async (page = 1) => {
@@ -131,11 +127,17 @@ export default function KitchenInventoryPage() {
   const fetchBatches = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-        const res = await inventoryService.getBatches({ page, per_page: batchPagi.pageSize, warehouse_id: filters.warehouse_id, search: filters.search });
+        const res = await inventoryService.getBatches({ 
+          page, 
+          per_page: batchPagi.pageSize, 
+          warehouse_id: filters.warehouse_id, 
+          search: filters.search,
+          status: filters.batch_status
+        });
         setBatches(res.data.data);
         setBatchPagi(p => ({ ...p, current: res.data.current_page, total: res.data.total }));
     } finally { setLoading(false); }
-  }, [filters.warehouse_id, filters.search, batchPagi.pageSize]);
+  }, [filters.warehouse_id, filters.search, filters.batch_status, batchPagi.pageSize]);
 
   useEffect(() => { 
     if (activeTab === 'stock') fetchStock();
@@ -191,7 +193,7 @@ export default function KitchenInventoryPage() {
                   <Col>
                     <Space>
                       <Button icon={<SearchOutlined />} type="primary" onClick={() => fetchStock(1)}>Tìm</Button>
-                      <Button icon={<ReloadOutlined />} onClick={() => { setFilters({ search: '', warehouse_id: undefined, low_stock: false }); fetchStock(1); }}>Reset</Button>
+                      <Button icon={<ReloadOutlined />} onClick={() => { setFilters({ search: '', warehouse_id: undefined, low_stock: false, batch_status: undefined }); fetchStock(1); }}>Reset</Button>
                     </Space>
                   </Col>
                 </Row>
@@ -206,9 +208,35 @@ export default function KitchenInventoryPage() {
           key: 'batches',
           label: <span><BarcodeOutlined /> Quản lý lô (Batches)</span>,
           children: (
-            <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <>
+              <Card variant="borderless" style={{ marginBottom: 16, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <Row gutter={12} align="middle">
+                  <Col flex="auto">
+                    <Input placeholder="Tìm theo mã lô, tên hàng..." prefix={<SearchOutlined />} value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} onPressEnter={() => fetchBatches(1)} allowClear />
+                  </Col>
+                  <Col>
+                    <Select 
+                      placeholder="Trạng thái lô" 
+                      style={{ width: 160 }} 
+                      allowClear 
+                      value={filters.batch_status} 
+                      onChange={v => setFilters(f => ({ ...f, batch_status: v }))}
+                      options={[
+                        { value: 'ACTIVE', label: 'Đang sử dụng' },
+                        { value: 'EXPIRED', label: 'Hết hạn' },
+                        { value: 'SOLD_OUT', label: 'Hết hàng' },
+                      ]}
+                    />
+                  </Col>
+                  <Col>
+                    <Button icon={<SearchOutlined />} type="primary" onClick={() => fetchBatches(1)}>Lọc lô</Button>
+                  </Col>
+                </Row>
+              </Card>
+              <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <BatchTable data={batches} loading={loading} pagination={batchPagi} onPageChange={(page) => fetchBatches(page)} />
-            </Card>
+              </Card>
+            </>
           )
         },
         { key: 'tx', label: <span><SwapOutlined /> Lịch sử giao dịch</span>, children: <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}><TxTable data={txs} loading={loading} pagination={txPagi} onPageChange={(page) => fetchTx(page)} /></Card> },
