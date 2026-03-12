@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Inventory;
 use App\Models\Warehouse;
+use App\Models\Inventory; // Ensure Inventory is explicitly used if needed
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ManagerInventoryController extends Controller
 {
@@ -35,8 +36,8 @@ class ManagerInventoryController extends Controller
         if ($request->boolean('low_stock')) {
             $query->whereHas('item', function ($q) {
                 $q->whereNotNull('min_stock');
-            })->whereColumn('quantity_available', '<=',
-                \DB::raw('(SELECT min_stock FROM items WHERE items.id = inventory.item_id)')
+            })->where('quantity_available', '<=',
+                DB::raw('(SELECT min_stock FROM items WHERE items.id = inventory.item_id)')
             );
         }
 
@@ -45,10 +46,28 @@ class ManagerInventoryController extends Controller
         $kitchens = Warehouse::where('type', 'KITCHEN')->where('status', 'ACTIVE')
             ->select('id', 'code', 'name')->get();
 
+        $expiredCount = \App\Models\Batch::expired()->whereIn('warehouse_id', $warehouseIds)->count();
+        $expiringSoonCount = \App\Models\Batch::expiringSoon(30)->whereIn('warehouse_id', $warehouseIds)->count();
+        
+        // Low Stock Count: Những mặt hàng mà TỔNG số lượng trong các lô ĐANG SỬ DỤNG (ACTIVE) <= min_stock
+        $lowStockCount = 0;
+        if ($warehouseIds->isNotEmpty()) {
+            $lowStockCount = \App\Models\Item::whereNotNull('min_stock')
+                ->where(function($q) use ($warehouseIds) {
+                    $q->whereRaw("(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE batches.item_id = items.id AND batches.status = 'ACTIVE' AND batches.warehouse_id IN (" . $warehouseIds->implode(',') . ")) <= items.min_stock");
+                })->count();
+        }
+
         return response()->json([
             'success'  => true,
             'kitchens' => $kitchens,
             'data'     => $inventory,
+            'summary'  => [
+                'total_count'         => $inventory->total(),
+                'low_stock_count'     => $lowStockCount,
+                'expired_count'       => $expiredCount,
+                'expiring_soon_count' => $expiringSoonCount,
+            ]
         ]);
     }
 

@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Input, Select, Button, Row, Col, Typography, Space, Badge, Statistic, Tabs, Progress, Tooltip, Alert } from 'antd';
-import { SearchOutlined, ReloadOutlined, WarningOutlined, HomeOutlined, SwapOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, WarningOutlined, HomeOutlined, SwapOutlined, BarcodeOutlined, FieldTimeOutlined } from '@ant-design/icons';
 import { inventoryService } from '../../api/inventoryService';
 
 const { Title, Text } = Typography;
 
 const TX_COLORS = { IN: 'success', OUT: 'error', RESERVE: 'warning', UNRESERVE: 'processing', ADJUST: 'default' };
 const TX_LABELS = { IN: '↑ Nhập', OUT: '↓ Xuất', RESERVE: '⚑ Giữ', UNRESERVE: '↺ Hủy giữ', ADJUST: '✎ Điều chỉnh' };
+
+const BATCH_COLORS = { ACTIVE: 'processing', EXPIRED: 'error', SOLD_OUT: 'default' };
+const BATCH_LABELS = { ACTIVE: 'Đang sử dụng', EXPIRED: 'Hết hạn', SOLD_OUT: 'Hết hàng' };
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 
 const StockProgress = ({ available, minStock }) => {
   const pct = minStock ? Math.min(100, (available / minStock) * 100) : null;
@@ -15,12 +29,36 @@ const StockProgress = ({ available, minStock }) => {
     <div style={{ minWidth: 100 }}>
       <span style={{ fontWeight: 600 }}>{Number(available).toFixed(2)}</span>
       {minStock && (
-        <Tooltip title={`Tồn tối thiểu: ${minStock}`}>
+        <Tooltip title={`Tồn tối thiếu: ${minStock}`}>
           <Progress percent={Math.round(pct)} size="small" status={status} style={{ marginTop: 2 }} />
         </Tooltip>
       )}
     </div>
   );
+};
+
+const BatchTable = ({ data, loading, pagination, onPageChange }) => {
+  const columns = [
+    { title: 'Mã Lô', dataIndex: 'batch_code', key: 'code', render: (v) => <Tag icon={<BarcodeOutlined />} color="blue">{v}</Tag> },
+    { title: 'Tên hàng', key: 'item', render: (_, r) => <div><Text strong>{r.item?.name}</Text><br/><Text type="secondary" style={{fontSize:11}}>{r.item?.code}</Text></div> },
+    { title: 'Số lượng lô', dataIndex: 'quantity', key: 'qty', align: 'right', render: (v, r) => <Text strong>{Number(v).toFixed(2)} {r.item?.unit}</Text> },
+    { title: 'Ngày Sản Xuất', dataIndex: 'mfg_date', key: 'mfg', width: 130, render: (v) => formatDate(v) },
+    { 
+      title: 'Hạn Sử Dụng', 
+      dataIndex: 'expiry_date', 
+      key: 'exp', 
+      width: 130, 
+      render: (v) => {
+        if (!v) return '—';
+        const isExpired = new Date(v) < new Date();
+        const isNear = !isExpired && (new Date(v) - new Date()) / (1000 * 60 * 60 * 24) <= 30;
+        return <Tag color={isExpired ? 'red' : isNear ? 'orange' : 'green'}>{formatDate(v)}</Tag>;
+      }
+    },
+    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (v) => <Tag color={BATCH_COLORS[v]}>{BATCH_LABELS[v]}</Tag> },
+    { title: 'Kho', key: 'wh', render: (_, r) => r.warehouse?.name },
+  ];
+  return <Table rowKey="id" columns={columns} dataSource={data} loading={loading} size="middle" pagination={{ ...pagination, showTotal: (t) => `Tổng ${t} lô`, onChange: onPageChange }} />;
 };
 
 const StockTable = ({ data, loading, pagination, onPageChange }) => {
@@ -48,7 +86,7 @@ const TxTable = ({ data, loading, pagination, onPageChange }) => {
   const columns = [
     { title: 'Loại', dataIndex: 'type', key: 'type', width: 120, render: (t) => <Badge status={TX_COLORS[t]} text={TX_LABELS[t] || t} /> },
     { title: 'Hàng', key: 'item', render: (_, r) => <span><Tag color="purple">{r.item?.code}</Tag> {r.item?.name}</span> },
-    { title: 'Kho', key: 'wh', render: (_, r) => r.warehouse?.name },
+    { title: 'Lô hàng', key: 'batch', render: (_, r) => r.batch_id ? <Tag icon={<BarcodeOutlined />} color="blue">Batch</Tag> : <Text type="secondary">—</Text> },
     { title: 'SL đổi', dataIndex: 'quantity', key: 'qty', align: 'right', render: (v, r) => {
       const sign = ['IN', 'UNRESERVE'].includes(r.type) ? '+' : '-';
       const color = ['IN', 'UNRESERVE'].includes(r.type) ? '#52c41a' : '#ff4d4f';
@@ -63,66 +101,108 @@ const TxTable = ({ data, loading, pagination, onPageChange }) => {
 };
 
 export default function KitchenInventoryPage() {
+  const [activeTab, setActiveTab] = useState('stock');
   const [stock, setStock] = useState([]);
   const [txs, setTxs] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [kitchens, setKitchens] = useState([]);
-  const [loadingStock, setLoadingStock] = useState(false);
-  const [loadingTx, setLoadingTx] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
   const [stockPagi, setStockPagi] = useState({ current: 1, pageSize: 20, total: 0 });
   const [txPagi, setTxPagi] = useState({ current: 1, pageSize: 20, total: 0 });
-  const [filters, setFilters] = useState({ search: '', warehouse_id: undefined, low_stock: false });
-  const [summaryStats, setSummaryStats] = useState({ total: 0, lowStock: 0 });
+  const [batchPagi, setBatchPagi] = useState({ current: 1, pageSize: 20, total: 0 });
+  
+  const [filters, setFilters] = useState({ search: '', warehouse_id: undefined, low_stock: false, batch_status: undefined });
+  const [summaryStats, setSummaryStats] = useState({ total: 0, lowStock: 0, expiring: 0, expired: 0 });
 
   const fetchStock = useCallback(async (page = 1) => {
-    setLoadingStock(true);
+    setLoading(true);
     try {
       const res = await inventoryService.getKitchenStock({ page, per_page: stockPagi.pageSize, ...filters });
       setStock(res.data.data);
       setKitchens(res.kitchens || []);
       setStockPagi(p => ({ ...p, current: res.data.current_page, total: res.data.total }));
-      const lowCount = res.data.data.filter(r => {
-        const min = parseFloat(r.item?.min_stock || 0);
-        return min > 0 && parseFloat(r.quantity_available) <= min;
-      }).length;
-      setSummaryStats({ total: res.data.total, lowStock: lowCount });
-    } finally { setLoadingStock(false); }
+      setSummaryStats({ 
+        total: res.data.total, 
+        lowStock: res.summary?.low_stock_count || 0,
+        expiring: res.summary?.expiring_soon_count || 0,
+        expired: res.summary?.expired_count || 0
+      });
+    } finally { setLoading(false); }
   }, [filters, stockPagi.pageSize]);
 
   const fetchTx = useCallback(async (page = 1) => {
-    setLoadingTx(true);
+    setLoading(true);
     try {
       const res = await inventoryService.getKitchenTransactions({ page, per_page: txPagi.pageSize, warehouse_id: filters.warehouse_id });
       setTxs(res.data.data);
       setTxPagi(p => ({ ...p, current: res.data.current_page, total: res.data.total }));
-    } finally { setLoadingTx(false); }
+    } finally { setLoading(false); }
   }, [filters.warehouse_id, txPagi.pageSize]);
 
-  useEffect(() => { fetchStock(); }, []); // eslint-disable-line
+  const fetchBatches = useCallback(async (page = 1) => {
+    setLoading(true);
+    try {
+        const res = await inventoryService.getBatches({ 
+          page, 
+          per_page: batchPagi.pageSize, 
+          warehouse_id: filters.warehouse_id, 
+          search: filters.search,
+          status: filters.batch_status
+        });
+        setBatches(res.data.data);
+        setBatchPagi(p => ({ ...p, current: res.data.current_page, total: res.data.total }));
+    } finally { setLoading(false); }
+  }, [filters.warehouse_id, filters.search, filters.batch_status, batchPagi.pageSize]);
+
+  useEffect(() => { 
+    if (activeTab === 'stock') fetchStock();
+    else if (activeTab === 'tx') fetchTx();
+    else if (activeTab === 'batches') fetchBatches();
+  }, [activeTab, fetchStock, fetchTx, fetchBatches]);
 
   return (
     <>
       <Title level={3} style={{ marginBottom: 16 }}>Tồn kho Bếp Trung Tâm</Title>
-      <Row gutter={16} style={{ marginBottom: 20 }}>
-        <Col span={6}>
+      <Row gutter={12} style={{ marginBottom: 20 }}>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Tổng mặt hàng" value={summaryStats.total} prefix={<HomeOutlined style={{ color: '#722ed1' }} />} styles={{ content: { color: '#722ed1' } }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Sắp hết hàng" value={summaryStats.lowStock} prefix={<WarningOutlined style={{ color: '#faad14' }} />} styles={{ content: { color: summaryStats.lowStock > 0 ? '#ff4d4f' : '#52c41a' } }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col flex="1 1 200px">
+          <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <Statistic title="Sắp hết hạn" value={summaryStats.expiring} prefix={<FieldTimeOutlined style={{ color: '#faad14' }} />} styles={{ content: { color: summaryStats.expiring > 0 ? '#faad14' : '#52c41a' } }} />
+          </Card>
+        </Col>
+        <Col flex="1 1 200px">
+          <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <Statistic title="Đã hết hạn" value={summaryStats.expired} prefix={<FieldTimeOutlined style={{ color: '#ff4d4f' }} />} styles={{ content: { color: summaryStats.expired > 0 ? '#ff4d4f' : '#52c41a' } }} />
+          </Card>
+        </Col>
+        <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <Statistic title="Số bếp" value={kitchens.length} prefix={<HomeOutlined style={{ color: '#1890ff' }} />} styles={{ content: { color: '#1890ff' } }} />
           </Card>
         </Col>
       </Row>
 
-      {summaryStats.lowStock > 0 && <Alert type="warning" showIcon icon={<WarningOutlined />} message={`${summaryStats.lowStock} mặt hàng đang dưới mức tồn tối thiểu!`} style={{ marginBottom: 16, borderRadius: 8 }} />}
+      {(summaryStats.expiring > 0 || summaryStats.expired > 0) && (
+        <Alert 
+          type={summaryStats.expired > 0 ? 'error' : 'warning'}
+          showIcon 
+          icon={<FieldTimeOutlined />} 
+          title={`Cảnh báo: Có ${summaryStats.expired} lô đã hết hạn và ${summaryStats.expiring} lô sắp hết hạn!`} 
+          style={{ marginBottom: 16, borderRadius: 8 }} 
+        />
+      )}
 
-      <Tabs defaultActiveKey="stock" onChange={(k) => { if (k === 'tx') fetchTx(1); }} items={[
+      <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {
           key: 'stock',
           label: 'Tồn kho hiện tại',
@@ -142,18 +222,53 @@ export default function KitchenInventoryPage() {
                   <Col>
                     <Space>
                       <Button icon={<SearchOutlined />} type="primary" onClick={() => fetchStock(1)}>Tìm</Button>
-                      <Button icon={<ReloadOutlined />} onClick={() => { setFilters({ search: '', warehouse_id: undefined, low_stock: false }); fetchStock(1); }}>Reset</Button>
+                      <Button icon={<ReloadOutlined />} onClick={() => { setFilters({ search: '', warehouse_id: undefined, low_stock: false, batch_status: undefined }); fetchStock(1); }}>Reset</Button>
                     </Space>
                   </Col>
                 </Row>
               </Card>
               <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <StockTable data={stock} loading={loadingStock} pagination={stockPagi} onPageChange={(page) => fetchStock(page)} />
+                <StockTable data={stock} loading={loading} pagination={stockPagi} onPageChange={(page) => fetchStock(page)} />
               </Card>
             </>
           ),
         },
-        { key: 'tx', label: <span><SwapOutlined /> Lịch sử giao dịch</span>, children: <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}><TxTable data={txs} loading={loadingTx} pagination={txPagi} onPageChange={(page) => fetchTx(page)} /></Card> },
+        {
+          key: 'batches',
+          label: <span><BarcodeOutlined /> Quản lý lô (Batches)</span>,
+          children: (
+            <>
+              <Card variant="borderless" style={{ marginBottom: 16, borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <Row gutter={12} align="middle">
+                  <Col flex="auto">
+                    <Input placeholder="Tìm theo mã lô, tên hàng..." prefix={<SearchOutlined />} value={filters.search} onChange={e => setFilters(f => ({ ...f, search: e.target.value }))} onPressEnter={() => fetchBatches(1)} allowClear />
+                  </Col>
+                  <Col>
+                    <Select 
+                      placeholder="Trạng thái lô" 
+                      style={{ width: 160 }} 
+                      allowClear 
+                      value={filters.batch_status} 
+                      onChange={v => setFilters(f => ({ ...f, batch_status: v }))}
+                      options={[
+                        { value: 'ACTIVE', label: 'Đang sử dụng' },
+                        { value: 'EXPIRED', label: 'Hết hạn' },
+                        { value: 'SOLD_OUT', label: 'Hết hàng' },
+                      ]}
+                    />
+                  </Col>
+                  <Col>
+                    <Button icon={<SearchOutlined />} type="primary" onClick={() => fetchBatches(1)}>Lọc lô</Button>
+                  </Col>
+                </Row>
+              </Card>
+              <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <BatchTable data={batches} loading={loading} pagination={batchPagi} onPageChange={(page) => fetchBatches(page)} />
+              </Card>
+            </>
+          )
+        },
+        { key: 'tx', label: <span><SwapOutlined /> Lịch sử giao dịch</span>, children: <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}><TxTable data={txs} loading={loading} pagination={txPagi} onPageChange={(page) => fetchTx(page)} /></Card> },
       ]} />
     </>
   );
