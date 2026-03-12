@@ -22,6 +22,21 @@ const formatDate = (dateStr) => {
   });
 };
 
+const StockProgress = ({ available, minStock }) => {
+  const pct = minStock ? Math.min(100, (available / minStock) * 100) : null;
+  const status = pct === null ? null : pct <= 50 ? 'exception' : pct <= 100 ? 'normal' : 'success';
+  return (
+    <div style={{ minWidth: 100 }}>
+      <span style={{ fontWeight: 600 }}>{Number(available).toFixed(2)}</span>
+      {minStock && (
+        <Tooltip title={`Tồn tối thiếu: ${minStock}`}>
+          <Progress percent={Math.round(pct)} size="small" status={status} style={{ marginTop: 2 }} />
+        </Tooltip>
+      )}
+    </div>
+  );
+};
+
 const BatchTable = ({ data, loading, pagination, onPageChange }) => {
   const columns = [
     { title: 'Mã Lô', dataIndex: 'batch_code', key: 'code', render: (v) => <Tag icon={<BarcodeOutlined />} color="blue">{v}</Tag> },
@@ -171,7 +186,7 @@ export default function KitchenInventoryPage() {
         </Col>
       </Row>
 
-      {summaryStats.expiring > 0 && <Alert type="error" showIcon icon={<FieldTimeOutlined />} message={`Cảnh báo: Có ${summaryStats.expiring} lô hàng sắp hết hạn hoặc đã hết hạn trong 30 ngày tới!`} style={{ marginBottom: 16, borderRadius: 8 }} />}
+      {summaryStats.expiring > 0 && <Alert type="error" showIcon icon={<FieldTimeOutlined />} title={`Cảnh báo: Có ${summaryStats.expiring} lô hàng sắp hết hạn hoặc đã hết hạn trong 30 ngày tới!`} style={{ marginBottom: 16, borderRadius: 8 }} />}
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {
