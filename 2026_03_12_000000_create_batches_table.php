@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Create the `batches` table with columns and constraints for tracking inventory batches.
+     *
+     * Creates columns: `id`; `item_id` and `warehouse_id` foreign keys referencing `items` and `warehouses` with cascade on delete; `batch_number`; `manufacturing_date` (nullable); `expiry_date` (nullable); `initial_quantity` and `quantity_on_hand` as decimals (15,3); `status` defaulting to `'ACTIVE'`; timestamps and soft deletes. Adds an index on `batch_number`.
      */
     public function up(): void
     {
@@ -29,7 +31,7 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Drop the 'batches' table if it exists.
      */
     public function down(): void
     {
