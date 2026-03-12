@@ -35,6 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Tồn kho Bếp Trung Tâm
         Route::get('/inventory', [ManagerInventoryController::class, 'index']);
         Route::get('/inventory/transactions', [ManagerInventoryController::class, 'transactions']);
+        
+        // Quản lý Lô hàng (Batch)
+        Route::get('/batches', [\App\Http\Controllers\Api\BatchController::class, 'index']);
+        Route::post('/batches', [\App\Http\Controllers\Api\BatchController::class, 'store']);
+        Route::get('/batches/{batch_code}', [\App\Http\Controllers\Api\BatchController::class, 'show']);
     });
 
     // ---- Store Routes ----

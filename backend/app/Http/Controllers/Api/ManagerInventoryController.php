@@ -45,10 +45,16 @@ class ManagerInventoryController extends Controller
         $kitchens = Warehouse::where('type', 'KITCHEN')->where('status', 'ACTIVE')
             ->select('id', 'code', 'name')->get();
 
+        $expiringCount = \App\Models\Batch::nearExpiry(30)->whereIn('warehouse_id', $warehouseIds)->count();
+
         return response()->json([
             'success'  => true,
             'kitchens' => $kitchens,
             'data'     => $inventory,
+            'summary'  => [
+                'low_stock_count' => $inventory->total(), // If filtered by low_stock, or calculate separately
+                'expiring_count'  => $expiringCount,
+            ]
         ]);
     }
 
