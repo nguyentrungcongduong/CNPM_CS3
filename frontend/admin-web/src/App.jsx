@@ -26,6 +26,8 @@ import SystemConfigPage from './pages/admin/SystemConfigPage'
 import RecipesPage from './pages/admin/RecipesPage'
 import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
 import StoreInventoryPage from './pages/manager/StoreInventoryPage'
+import StoreOrdersPage from './pages/store/StoreOrdersPage'
+import StoreOrderCreatePage from './pages/store/StoreOrderCreatePage'
 import './App.css'
 
 const { Header, Content, Footer, Sider } = Layout
@@ -76,6 +78,8 @@ const BREADCRUMB_MAP = {
   '/supply': ['Supply Coordinator'],
   '/kitchen': ['Kitchen Staff'],
   '/store': ['Store Area'],
+  '/store/orders': ['Store Area', 'Đơn hàng'],
+  '/store/orders/new': ['Store Area', 'Tạo đơn hàng'],
 };
 
 // ---- Main Layout ----
@@ -125,7 +129,18 @@ function MainLayout() {
     }] : []),
     ...(roleCode === 'SUPPLY_COORDINATOR' ? [{ key: '/supply', icon: <ShopOutlined />, label: <Link to="/supply">Supply Coord</Link> }] : []),
     ...(roleCode === 'CENTRAL_KITCHEN_STAFF' ? [{ key: '/kitchen', icon: <HomeOutlined />, label: <Link to="/kitchen">Kitchen Staff</Link> }] : []),
-    ...(roleCode === 'STORE_STAFF' ? [{ key: '/store', icon: <FileTextOutlined />, label: <Link to="/store">Store Area</Link> }] : []),
+    ...(roleCode === 'STORE_STAFF'
+      ? [{
+          key: 'store-group',
+          icon: <FileTextOutlined />,
+          label: 'Cửa hàng',
+          children: [
+            { key: '/store', icon: <HomeOutlined />, label: <Link to="/store">Tổng quan</Link> },
+            { key: '/store/orders', icon: <FileTextOutlined />, label: <Link to="/store/orders">Đơn hàng</Link> },
+            { key: '/store/orders/new', icon: <FileTextOutlined />, label: <Link to="/store/orders/new">Tạo đơn hàng</Link> },
+          ],
+        }]
+      : []),
   ];
 
   const breadcrumbs = BREADCRUMB_MAP[location.pathname] || ['Dashboard'];
@@ -221,6 +236,8 @@ function App() {
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
           <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
           <Route path="store"   element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StorePage /></ProtectedRoute>} />
+          <Route path="store/orders" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrdersPage /></ProtectedRoute>} />
+          <Route path="store/orders/new" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrderCreatePage /></ProtectedRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
