@@ -26,6 +26,7 @@ import SystemConfigPage from './pages/admin/SystemConfigPage'
 import RecipesPage from './pages/admin/RecipesPage'
 import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
 import StoreInventoryPage from './pages/manager/StoreInventoryPage'
+import ManagerOrdersPage from './pages/manager/ManagerOrdersPage'
 import StoreOrdersPage from './pages/store/StoreOrdersPage'
 import StoreOrderCreatePage from './pages/store/StoreOrderCreatePage'
 import './App.css'
@@ -75,6 +76,7 @@ const BREADCRUMB_MAP = {
   '/manager': ['Manager Area'],
   '/manager/kitchen-inventory': ['Manager', 'Tồn kho Bếp Trung Tâm'],
   '/manager/store-inventory': ['Manager', 'Tồn kho Cửa hàng'],
+  '/manager/orders': ['Manager', 'Đơn hàng từ cửa hàng'],
   '/supply': ['Supply Coordinator'],
   '/kitchen': ['Kitchen Staff'],
   '/store': ['Store Area'],
@@ -110,6 +112,7 @@ function MainLayout() {
     { key: '/manager', icon: <ShopOutlined />, label: <Link to="/manager">Manager Home</Link> },
     { key: '/manager/kitchen-inventory', icon: <HomeOutlined />, label: <Link to="/manager/kitchen-inventory">Tồn kho Bếp TT</Link> },
     { key: '/manager/store-inventory', icon: <ShopOutlined />, label: <Link to="/manager/store-inventory">Tồn kho Cửa hàng</Link> },
+    { key: '/manager/orders', icon: <FileTextOutlined />, label: <Link to="/manager/orders">Đơn hàng từ cửa hàng</Link> },
   ];
 
   // Build sidebar items based on role
@@ -231,6 +234,7 @@ function App() {
           <Route path="manager" element={<ProtectedRoute allowedRoles={['MANAGER']}><ManagerPage /></ProtectedRoute>} />
           <Route path="manager/kitchen-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><KitchenInventoryPage /></ProtectedRoute>} />
           <Route path="manager/store-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><StoreInventoryPage /></ProtectedRoute>} />
+          <Route path="manager/orders" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><ManagerOrdersPage /></ProtectedRoute>} />
 
           {/* Other role routes */}
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />

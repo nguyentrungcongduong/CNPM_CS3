@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ManagerInventoryController;
+use App\Http\Controllers\Api\ManagerOrderController;
 use App\Http\Controllers\Api\StoreInventoryController;
 use App\Http\Controllers\Api\StoreOrderController;
 use App\Http\Controllers\Api\ItemController;
@@ -41,6 +42,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/batches', [\App\Http\Controllers\Api\BatchController::class, 'index']);
         Route::post('/batches', [\App\Http\Controllers\Api\BatchController::class, 'store']);
         Route::get('/batches/{batch_code}', [\App\Http\Controllers\Api\BatchController::class, 'show']);
+
+        // Quản lý đơn đặt hàng từ cửa hàng
+        Route::get('/orders', [ManagerOrderController::class, 'index']);
+        Route::patch('/orders/{id}/approve', [ManagerOrderController::class, 'approve']);
+        Route::patch('/orders/{id}/reject', [ManagerOrderController::class, 'reject']);
     });
 
     // ---- Store Routes ----
