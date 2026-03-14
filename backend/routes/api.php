@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ManagerInventoryController;
 use App\Http\Controllers\Api\StoreInventoryController;
+use App\Http\Controllers\Api\StoreOrderController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RecipeController;
 
@@ -47,5 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Tồn kho của một cửa hàng
         Route::get('/inventory/{store_id}', [StoreInventoryController::class, 'show']);
         Route::get('/inventory/{store_id}/transactions', [StoreInventoryController::class, 'transactions']);
+
+        // Đơn hàng của cửa hàng
+        Route::get('/orders', [StoreOrderController::class, 'index']);
+        Route::post('/orders', [StoreOrderController::class, 'store']);
+        Route::get('/orders/{id}', [StoreOrderController::class, 'show']);
     });
 });
