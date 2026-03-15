@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\StoreInventoryController;
 use App\Http\Controllers\Api\StoreOrderController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RecipeController;
+use App\Http\Controllers\Api\CoordinatorOrderController;
+use App\Http\Controllers\Api\KitchenOrderController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -37,16 +39,33 @@ Route::middleware('auth:sanctum')->group(function () {
         // Tồn kho Bếp Trung Tâm
         Route::get('/inventory', [ManagerInventoryController::class, 'index']);
         Route::get('/inventory/transactions', [ManagerInventoryController::class, 'transactions']);
-        
+
         // Quản lý Lô hàng (Batch)
         Route::get('/batches', [\App\Http\Controllers\Api\BatchController::class, 'index']);
         Route::post('/batches', [\App\Http\Controllers\Api\BatchController::class, 'store']);
         Route::get('/batches/{batch_code}', [\App\Http\Controllers\Api\BatchController::class, 'show']);
 
-        // Quản lý đơn đặt hàng từ cửa hàng
+        // Quản lý đơn đặt hàng từ cửa hàng (legacy approve/reject giữ lại)
         Route::get('/orders', [ManagerOrderController::class, 'index']);
         Route::patch('/orders/{id}/approve', [ManagerOrderController::class, 'approve']);
         Route::patch('/orders/{id}/reject', [ManagerOrderController::class, 'reject']);
+    });
+
+    // ---- Supply Coordinator Routes ----
+    // PUT /api/coordinator/orders/{id}/confirm  →  SUBMITTED → CONFIRMED
+    // PUT /api/coordinator/orders/{id}/reject   →  SUBMITTED → REJECTED
+    Route::prefix('coordinator')->group(function () {
+        Route::get('/orders', [CoordinatorOrderController::class, 'index']);
+        Route::put('/orders/{id}/confirm', [CoordinatorOrderController::class, 'confirm']);
+        Route::put('/orders/{id}/reject', [CoordinatorOrderController::class, 'reject']);
+    });
+
+    // ---- Kitchen Routes ----
+    // PUT /api/kitchen/orders/{id}/status  →  advance status through production lifecycle
+    Route::prefix('kitchen')->group(function () {
+        Route::get('/orders', [KitchenOrderController::class, 'index']);
+        Route::get('/orders/{id}', [KitchenOrderController::class, 'show']);
+        Route::put('/orders/{id}/status', [KitchenOrderController::class, 'updateStatus']);
     });
 
     // ---- Store Routes ----
@@ -59,5 +78,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [StoreOrderController::class, 'index']);
         Route::post('/orders', [StoreOrderController::class, 'store']);
         Route::get('/orders/{id}', [StoreOrderController::class, 'show']);
+
+        // Store submit đơn DRAFT → SUBMITTED
+        Route::put('/orders/{id}/submit', [StoreOrderController::class, 'submit']);
+
+        // Store cancel đơn (DRAFT hoặc SUBMITTED)
+        Route::put('/orders/{id}/cancel', [StoreOrderController::class, 'cancel']);
     });
 });
