@@ -24,6 +24,8 @@ import StoresPage from './pages/admin/StoresPage'
 import KitchensPage from './pages/admin/KitchensPage'
 import SystemConfigPage from './pages/admin/SystemConfigPage'
 import RecipesPage from './pages/admin/RecipesPage'
+import KitchenProductionPage from './pages/kitchen/KitchenProductionPage'
+import KitchenOrdersPage from './pages/kitchen/KitchenOrdersPage'
 import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
 import StoreInventoryPage from './pages/manager/StoreInventoryPage'
 import ManagerOrdersPage from './pages/manager/ManagerOrdersPage'
@@ -131,7 +133,18 @@ function MainLayout() {
       children: managerSubItems,
     }] : []),
     ...(roleCode === 'SUPPLY_COORDINATOR' ? [{ key: '/supply', icon: <ShopOutlined />, label: <Link to="/supply">Supply Coord</Link> }] : []),
-    ...(roleCode === 'CENTRAL_KITCHEN_STAFF' ? [{ key: '/kitchen', icon: <HomeOutlined />, label: <Link to="/kitchen">Kitchen Staff</Link> }] : []),
+    ...(roleCode === 'CENTRAL_KITCHEN_STAFF' 
+      ? [{
+          key: 'kitchen-group',
+          icon: <HomeOutlined />,
+          label: 'Bếp trung tâm',
+          children: [
+            { key: '/kitchen', icon: <HomeOutlined />, label: <Link to="/kitchen">Tổng quan</Link> },
+            { key: '/kitchen/orders', icon: <FileTextOutlined />, label: <Link to="/kitchen/orders">Danh sách đơn</Link> },
+            { key: '/kitchen/production', icon: <FileTextOutlined />, label: <Link to="/kitchen/production">Kế hoạch sản xuất</Link> },
+          ],
+        }] 
+      : []),
     ...(roleCode === 'STORE_STAFF'
       ? [{
           key: 'store-group',
@@ -239,6 +252,8 @@ function App() {
           {/* Other role routes */}
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
           <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
+          <Route path="kitchen/orders" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenOrdersPage /></ProtectedRoute>} />
+          <Route path="kitchen/production" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenProductionPage /></ProtectedRoute>} />
           <Route path="store"   element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StorePage /></ProtectedRoute>} />
           <Route path="store/orders" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrdersPage /></ProtectedRoute>} />
           <Route path="store/orders/new" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrderCreatePage /></ProtectedRoute>} />
