@@ -53,12 +53,19 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ---- Supply Coordinator Routes ----
-    // PUT /api/coordinator/orders/{id}/confirm  →  SUBMITTED → CONFIRMED
-    // PUT /api/coordinator/orders/{id}/reject   →  SUBMITTED → REJECTED
+    // GET  /api/coordinator/orders/summary            → aggregate demand
+    // GET  /api/coordinator/orders                    → list orders
+    // PUT  /api/coordinator/orders/{id}/confirm       → SUBMITTED → CONFIRMED
+    // PUT  /api/coordinator/orders/{id}/reject        → SUBMITTED → REJECTED
+    // PUT  /api/coordinator/orders/{id}/cancel        → CONFIRMED → CANCELLED
+    // PUT  /api/coordinator/orders/{id}/adjust-quantities → update approved_quantity per item
     Route::prefix('coordinator')->group(function () {
+        Route::get('/orders/summary', [CoordinatorOrderController::class, 'summary']);
         Route::get('/orders', [CoordinatorOrderController::class, 'index']);
         Route::put('/orders/{id}/confirm', [CoordinatorOrderController::class, 'confirm']);
         Route::put('/orders/{id}/reject', [CoordinatorOrderController::class, 'reject']);
+        Route::put('/orders/{id}/cancel', [CoordinatorOrderController::class, 'cancel']);
+        Route::put('/orders/{id}/adjust-quantities', [CoordinatorOrderController::class, 'adjustQuantities']);
     });
 
     // ---- Kitchen Routes ----
