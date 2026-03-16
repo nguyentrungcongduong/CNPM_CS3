@@ -11,6 +11,7 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
   TeamOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, Link, useLocation } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
@@ -31,6 +32,8 @@ import StoreInventoryPage from './pages/manager/StoreInventoryPage'
 import ManagerOrdersPage from './pages/manager/ManagerOrdersPage'
 import StoreOrdersPage from './pages/store/StoreOrdersPage'
 import StoreOrderCreatePage from './pages/store/StoreOrderCreatePage'
+import CoordinatorOrdersPage from './pages/coordinator/CoordinatorOrdersPage'
+import CoordinatorSummaryPage from './pages/coordinator/CoordinatorSummaryPage'
 import './App.css'
 
 const { Header, Content, Footer, Sider } = Layout
@@ -80,6 +83,8 @@ const BREADCRUMB_MAP = {
   '/manager/store-inventory': ['Manager', 'Tồn kho Cửa hàng'],
   '/manager/orders': ['Manager', 'Đơn hàng từ cửa hàng'],
   '/supply': ['Supply Coordinator'],
+  '/supply/orders': ['Supply Coordinator', 'Duyệt đơn hàng'],
+  '/supply/summary': ['Supply Coordinator', 'Tổng hợp nhu cầu'],
   '/kitchen': ['Kitchen Staff'],
   '/store': ['Store Area'],
   '/store/orders': ['Store Area', 'Đơn hàng'],
@@ -132,7 +137,18 @@ function MainLayout() {
       label: 'Quản lý',
       children: managerSubItems,
     }] : []),
-    ...(roleCode === 'SUPPLY_COORDINATOR' ? [{ key: '/supply', icon: <ShopOutlined />, label: <Link to="/supply">Supply Coord</Link> }] : []),
+    ...(roleCode === 'SUPPLY_COORDINATOR'
+      ? [{
+          key: 'coordinator-group',
+          icon: <ShopOutlined />,
+          label: 'Điều phối',
+          children: [
+            { key: '/supply', icon: <DashboardOutlined />, label: <Link to="/supply">Tổng quan</Link> },
+            { key: '/supply/orders', icon: <FileTextOutlined />, label: <Link to="/supply/orders">Duyệt đơn hàng</Link> },
+            { key: '/supply/summary', icon: <BarChartOutlined />, label: <Link to="/supply/summary">Tổng hợp nhu cầu</Link> },
+          ],
+        }]
+      : []),
     ...(roleCode === 'CENTRAL_KITCHEN_STAFF' 
       ? [{
           key: 'kitchen-group',
@@ -251,6 +267,8 @@ function App() {
 
           {/* Other role routes */}
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
+          <Route path="supply/orders" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorOrdersPage /></ProtectedRoute>} />
+          <Route path="supply/summary" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorSummaryPage /></ProtectedRoute>} />
           <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
           <Route path="kitchen/orders" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenOrdersPage /></ProtectedRoute>} />
           <Route path="kitchen/production" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenProductionPage /></ProtectedRoute>} />
