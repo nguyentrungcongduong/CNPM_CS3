@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RecipeController;
 use App\Http\Controllers\Api\CoordinatorOrderController;
 use App\Http\Controllers\Api\KitchenOrderController;
+use App\Http\Controllers\Api\KitchenProductionController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -66,6 +67,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders', [KitchenOrderController::class, 'index']);
         Route::get('/orders/{id}', [KitchenOrderController::class, 'show']);
         Route::put('/orders/{id}/status', [KitchenOrderController::class, 'updateStatus']);
+
+        // Production Plans
+        Route::get('/production-plan', [KitchenProductionController::class, 'index']);
+        Route::post('/production-plan', [KitchenProductionController::class, 'store']);
+        Route::get('/production-plan/{id}/ingredients', [KitchenProductionController::class, 'checkIngredients']);
+        Route::put('/production/{id}/status', [KitchenProductionController::class, 'updateStatus']);
     });
 
     // ---- Store Routes ----
