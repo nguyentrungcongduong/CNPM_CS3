@@ -163,6 +163,7 @@ export default function KitchenProductionPage() {
       const vals = await batchForm.validateFields();
       setBatchSubmitting(true);
       const payload = {
+        order_id: selectedPlan?.orders?.[0]?.id || null,
         item_id: vals.item_id,
         quantity: vals.quantity,
         production_date: vals.production_date ? vals.production_date.format('YYYY-MM-DD') : null,

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
+use App\Models\Order;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,7 @@ class KitchenBatchController extends Controller
         $this->ensureKitchen($request);
 
         $validated = $request->validate([
+            'order_id' => 'nullable|exists:orders,id',
             'item_id' => 'required|exists:items,id',
             'quantity' => 'required|numeric|min:0.001',
             'production_date' => 'nullable|date',
@@ -140,6 +142,13 @@ class KitchenBatchController extends Controller
                 'quantity_after' => (float) $inventory->quantity_on_hand,
                 'note' => $validated['note'] ?? "Sản xuất lô mới: $batchCode",
             ]);
+
+            // 4) Mark related order as processed by kitchen (so it can be removed from the kitchen queue)
+            if (!empty($validated['order_id'])) {
+                Order::where('id', $validated['order_id'])->update([
+                    'kitchen_processed_at' => now(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

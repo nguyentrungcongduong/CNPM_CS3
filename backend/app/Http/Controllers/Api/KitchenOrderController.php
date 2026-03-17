@@ -57,6 +57,18 @@ class KitchenOrderController extends Controller
 
         $query = Order::with(['store', 'items.item', 'creator', 'confirmedBy']);
 
+        // Exclude orders already processed by kitchen (demo cleanup / operational queue)
+        $query->whereNull('kitchen_processed_at');
+
+        // Date-based filtering (required_date preferred, fallback order_date)
+        if ($request->filled('date')) {
+            $date = $request->date;
+            $query->where(function ($q) use ($date) {
+                $q->whereDate('required_date', $date)
+                  ->orWhereDate('order_date', $date);
+            });
+        }
+
         // Default: show all kitchen-relevant orders (no filter required)
         if ($request->filled('status')) {
             $query->where('status', $request->status);
