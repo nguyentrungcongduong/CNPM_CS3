@@ -12,6 +12,7 @@ import {
   MenuFoldOutlined,
   TeamOutlined,
   BarChartOutlined,
+  CarOutlined,
 } from '@ant-design/icons'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, Link, useLocation } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
@@ -34,6 +35,8 @@ import StoreOrdersPage from './pages/store/StoreOrdersPage'
 import StoreOrderCreatePage from './pages/store/StoreOrderCreatePage'
 import CoordinatorOrdersPage from './pages/coordinator/CoordinatorOrdersPage'
 import CoordinatorSummaryPage from './pages/coordinator/CoordinatorSummaryPage'
+import CoordinatorDeliverySchedulePage from './pages/coordinator/CoordinatorDeliverySchedulePage'
+import CoordinatorDeliveryTrackingPage from './pages/coordinator/CoordinatorDeliveryTrackingPage'
 import './App.css'
 
 const { Header, Content, Footer, Sider } = Layout
@@ -85,6 +88,8 @@ const BREADCRUMB_MAP = {
   '/supply': ['Supply Coordinator'],
   '/supply/orders': ['Supply Coordinator', 'Duyệt đơn hàng'],
   '/supply/summary': ['Supply Coordinator', 'Tổng hợp nhu cầu'],
+  '/supply/delivery/schedule': ['Supply Coordinator', 'Lập lịch giao hàng'],
+  '/supply/delivery/tracking': ['Supply Coordinator', 'Theo dõi tiến độ'],
   '/kitchen': ['Kitchen Staff'],
   '/kitchen/orders': ['Kitchen Staff', 'Đơn hàng'],
   '/kitchen/production': ['Kitchen Staff', 'Kế hoạch sản xuất'],
@@ -148,6 +153,8 @@ function MainLayout() {
             { key: '/supply', icon: <DashboardOutlined />, label: <Link to="/supply">Tổng quan</Link> },
             { key: '/supply/orders', icon: <FileTextOutlined />, label: <Link to="/supply/orders">Duyệt đơn hàng</Link> },
             { key: '/supply/summary', icon: <BarChartOutlined />, label: <Link to="/supply/summary">Tổng hợp nhu cầu</Link> },
+            { key: '/supply/delivery/schedule', icon: <CarOutlined />, label: <Link to="/supply/delivery/schedule">Lập lịch giao hàng</Link> },
+            { key: '/supply/delivery/tracking', icon: <CarOutlined />, label: <Link to="/supply/delivery/tracking">Theo dõi tiến độ</Link> },
           ],
         }]
       : []),
@@ -271,6 +278,8 @@ function App() {
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
           <Route path="supply/orders" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorOrdersPage /></ProtectedRoute>} />
           <Route path="supply/summary" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorSummaryPage /></ProtectedRoute>} />
+          <Route path="supply/delivery/schedule" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorDeliverySchedulePage /></ProtectedRoute>} />
+          <Route path="supply/delivery/tracking" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorDeliveryTrackingPage /></ProtectedRoute>} />
           <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
           <Route path="kitchen/orders" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenOrdersPage /></ProtectedRoute>} />
           <Route path="kitchen/production" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenProductionPage /></ProtectedRoute>} />

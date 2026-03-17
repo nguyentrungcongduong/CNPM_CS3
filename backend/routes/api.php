@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\StoreOrderController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RecipeController;
 use App\Http\Controllers\Api\CoordinatorOrderController;
+use App\Http\Controllers\Api\CoordinatorDeliveryController;
 use App\Http\Controllers\Api\KitchenOrderController;
 use App\Http\Controllers\Api\KitchenProductionController;
 use App\Http\Controllers\Api\KitchenBatchController;
@@ -61,13 +62,25 @@ Route::middleware('auth:sanctum')->group(function () {
     // PUT  /api/coordinator/orders/{id}/reject        → SUBMITTED → REJECTED
     // PUT  /api/coordinator/orders/{id}/cancel        → CONFIRMED → CANCELLED
     // PUT  /api/coordinator/orders/{id}/adjust-quantities → update approved_quantity per item
+    // GET  /api/coordinator/orders/ready              → đơn READY chờ lên lịch
+    // GET  /api/coordinator/deliveries                → danh sách lịch giao
+    // POST /api/coordinator/deliveries                → tạo lịch giao (assignDelivery)
+    // GET  /api/coordinator/deliveries/{id}           → chi tiết lịch giao
+    // PATCH /api/coordinator/deliveries/{id}/status   → cập nhật trạng thái
     Route::prefix('coordinator')->group(function () {
         Route::get('/orders/summary', [CoordinatorOrderController::class, 'summary']);
+        Route::get('/orders/ready', [CoordinatorDeliveryController::class, 'readyOrders']);
         Route::get('/orders', [CoordinatorOrderController::class, 'index']);
         Route::put('/orders/{id}/confirm', [CoordinatorOrderController::class, 'confirm']);
         Route::put('/orders/{id}/reject', [CoordinatorOrderController::class, 'reject']);
         Route::put('/orders/{id}/cancel', [CoordinatorOrderController::class, 'cancel']);
         Route::put('/orders/{id}/adjust-quantities', [CoordinatorOrderController::class, 'adjustQuantities']);
+
+        // Delivery schedule
+        Route::get('/deliveries', [CoordinatorDeliveryController::class, 'index']);
+        Route::post('/deliveries', [CoordinatorDeliveryController::class, 'store']);
+        Route::get('/deliveries/{id}', [CoordinatorDeliveryController::class, 'show']);
+        Route::patch('/deliveries/{id}/status', [CoordinatorDeliveryController::class, 'updateStatus']);
     });
 
     // ---- Kitchen Routes ----
