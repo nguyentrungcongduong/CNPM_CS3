@@ -125,7 +125,7 @@ class CoordinatorDeliveryController extends Controller
     {
         $this->ensureCoordinator($request);
 
-        $delivery = Delivery::with(['items.order.store.items', 'assignedBy'])->findOrFail($id);
+        $delivery = Delivery::with(['items.order.store', 'items.order.items.item', 'assignedBy'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
