@@ -30,11 +30,12 @@ class DeliveryService
         return DB::transaction(function () use ($data, $assignedBy) {
             // ----- 1. Sinh delivery_code -----
             $today = now()->format('Ymd');
+            /** @var \App\Models\Delivery|null $last */
             $last  = Delivery::withTrashed()
                 ->where('delivery_code', 'like', "DEL-{$today}-%")
                 ->orderByDesc('id')
                 ->first();
-            $seq  = $last ? ((int) substr($last->delivery_code, -3)) + 1 : 1;
+            $seq  = $last ? ((int) substr((string) $last->delivery_code, -3)) + 1 : 1;
             $code = "DEL-{$today}-" . str_pad($seq, 3, '0', STR_PAD_LEFT);
 
             // ----- 2. Validate danh sách đơn -----
