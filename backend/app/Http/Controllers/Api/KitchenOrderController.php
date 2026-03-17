@@ -40,7 +40,7 @@ class KitchenOrderController extends Controller
         $user = $request->user();
         $roleCode = $user?->role?->code;
 
-        if (!in_array($roleCode, ['CENTRAL_KITCHEN_STAFF', 'SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN'])) {
+        if (!in_array($roleCode, ['CENTRAL_KITCHEN_STAFF','KITCHEN_STAFF', 'SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN'])) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc cao hơn)',
@@ -57,17 +57,30 @@ class KitchenOrderController extends Controller
 
         $query = Order::with(['store', 'items.item', 'creator', 'confirmedBy']);
 
-        // Default: show orders that are in the kitchen lifecycle
+        // Default: show all kitchen-relevant orders (no filter required)
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } else {
-            // Show all non-terminal, non-draft, non-submitted states by default
+            // Include full flow + legacy statuses so Kitchen can see everything relevant by default.
+            // Note: Some modules still use legacy statuses (PENDING/APPROVED/PROCESSING).
             $query->whereIn('status', [
+                // Legacy (manager/store)
+                'PENDING',
+                'APPROVED',
+                'REJECTED',
+                'PROCESSING',
+                // Canonical workflow (coordinator + kitchen)
+                Order::STATUS_SUBMITTED,
                 Order::STATUS_CONFIRMED,
                 Order::STATUS_IN_PRODUCTION,
                 Order::STATUS_READY,
                 Order::STATUS_IN_DELIVERY,
                 Order::STATUS_DELIVERED,
+                Order::STATUS_COMPLETED,
+                Order::STATUS_CANCELLED,
+                Order::STATUS_REJECTED,
+                // Additional aliases seen in requirements / external naming
+                'DELIVERING',
             ]);
         }
 

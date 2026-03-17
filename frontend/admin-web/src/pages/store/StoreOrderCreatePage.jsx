@@ -8,6 +8,7 @@ import {
   Typography,
   Select,
   InputNumber,
+  DatePicker,
   Divider,
   Alert,
   message,
@@ -16,6 +17,7 @@ import { PlusOutlined, MinusCircleOutlined, ShoppingCartOutlined } from '@ant-de
 import { useNavigate } from 'react-router-dom';
 import { storeOrderService } from '../../api/storeOrderService';
 import { recipeService } from '../../api/recipeService';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -56,6 +58,7 @@ export default function StoreOrderCreatePage() {
     setSubmitting(true);
     try {
       await storeOrderService.create({
+        required_date: values.required_date ? values.required_date.format('YYYY-MM-DD') : null,
         note: values.note || null,
         items: values.items.map((row) => ({
           item_id: row.item_id,
@@ -114,8 +117,19 @@ export default function StoreOrderCreatePage() {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{ items: [{ item_id: undefined, ordered_quantity: null, unit: '' }] }}
+          initialValues={{
+            required_date: dayjs(),
+            items: [{ item_id: undefined, ordered_quantity: null, unit: '' }],
+          }}
         >
+          <Form.Item
+            label="Ngày yêu cầu"
+            name="required_date"
+            rules={[{ required: true, message: 'Vui lòng chọn ngày cần hàng' }]}
+          >
+            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
+
           <Form.Item label="Ghi chú đơn hàng" name="note">
             <TextArea
               rows={3}

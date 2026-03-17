@@ -19,6 +19,19 @@ class KitchenProductionController extends Controller
         $this->productionService = $productionService;
     }
 
+    private function ensureKitchenOrAdmin(Request $request): void
+    {
+        $user = $request->user();
+        $roleCode = $user?->role?->code;
+
+        if (!in_array($roleCode, ['KITCHEN_STAFF', 'CENTRAL_KITCHEN_STAFF', 'ADMIN'])) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc Admin)',
+            ], 403));
+        }
+    }
+
     /**
      * Get list of production plans
      */
@@ -162,6 +175,35 @@ class KitchenProductionController extends Controller
             'success' => true,
             'message' => 'Cập nhật trạng thái thành công.',
             'data' => $plan
+        ]);
+    }
+
+    /**
+     * DELETE /api/kitchen/production-plan/{id}
+     * Allow deletion when status = PENDING or COMPLETED.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        $this->ensureKitchenOrAdmin($request);
+
+        $plan = ProductionPlan::with('items')->findOrFail($id);
+
+        if (!in_array($plan->status, ['PENDING', 'COMPLETED'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Không thể xóa kế hoạch ở trạng thái '{$plan->status}'. Chỉ cho phép xóa khi PENDING hoặc COMPLETED.",
+            ], 422);
+        }
+
+        DB::transaction(function () use ($plan) {
+            ProductionPlanItem::where('production_plan_id', $plan->id)->delete();
+            // Hard delete to trigger FK nullOnDelete on orders.production_plan_id
+            $plan->forceDelete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa kế hoạch sản xuất thành công.',
         ]);
     }
 }

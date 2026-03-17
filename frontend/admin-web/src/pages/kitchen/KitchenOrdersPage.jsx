@@ -10,10 +10,8 @@ import {
   Modal,
   Empty,
   message,
-  Select,
   Drawer,
   Descriptions,
-  Alert,
   Divider,
 } from 'antd';
 import {
@@ -243,23 +241,20 @@ export default function KitchenOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState(null);
   const [selected, setSelected] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchOrders = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const params = { page, per_page: pagination.pageSize };
-      if (statusFilter) params.status = statusFilter;
-      const res = await kitchenOrderService.list(params);
+      const res = await kitchenOrderService.list({ page, per_page: pagination.pageSize });
       const payload = res.data || res;
       setOrders(payload.data || []);
       setPagination((p) => ({ ...p, current: payload.current_page, total: payload.total }));
     } finally {
       setLoading(false);
     }
-  }, [pagination.pageSize, statusFilter]);
+  }, [pagination.pageSize]);
 
   useEffect(() => { fetchOrders(1); }, [fetchOrders]);
 
@@ -288,15 +283,6 @@ export default function KitchenOrdersPage() {
       },
     });
   };
-
-  const kitchenStatusOptions = [
-    ORDER_STATUS.CONFIRMED,
-    ORDER_STATUS.IN_PRODUCTION,
-    ORDER_STATUS.READY,
-    ORDER_STATUS.IN_DELIVERY,
-    ORDER_STATUS.DELIVERED,
-    ORDER_STATUS.COMPLETED,
-  ].map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
   const columns = [
     {
@@ -383,14 +369,6 @@ export default function KitchenOrdersPage() {
             </Text>
           </Space>
           <Space>
-            <Select
-              value={statusFilter}
-              onChange={(v) => setStatusFilter(v)}
-              placeholder="Lọc theo trạng thái"
-              allowClear
-              style={{ width: 200 }}
-              options={kitchenStatusOptions}
-            />
             <Button icon={<ReloadOutlined />} onClick={() => fetchOrders(pagination.current)}>
               Làm mới
             </Button>

@@ -61,6 +61,8 @@ class UserController extends Controller
             'status'    => ['nullable', Rule::in(['ACTIVE', 'INACTIVE'])],
         ]);
 
+        $roleCode = Role::where('id', $request->role_id)->value('code');
+
         $user = User::create([
             'full_name'    => $request->full_name,
             'email'        => $request->email,
@@ -68,7 +70,7 @@ class UserController extends Controller
             'password'     => Hash::make($request->password),
             'role_id'      => $request->role_id,
             'phone'        => $request->phone,
-            'store_id'     => $request->store_id,
+            'store_id'     => $roleCode === 'KITCHEN_STAFF' ? null : $request->store_id,
             'warehouse_id' => $request->warehouse_id,
             'status'       => $request->status ?? 'ACTIVE',
         ]);
@@ -116,6 +118,12 @@ class UserController extends Controller
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
+        }
+
+        $roleId = $data['role_id'] ?? $user->role_id;
+        $roleCode = Role::where('id', $roleId)->value('code');
+        if ($roleCode === 'KITCHEN_STAFF') {
+            $data['store_id'] = null;
         }
 
         $user->update($data);

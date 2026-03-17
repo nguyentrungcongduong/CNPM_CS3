@@ -17,3 +17,7 @@ export const checkIngredients = async (id) => {
 export const updateProductionStatus = async (id, status) => {
     return await axios.put(`${API_URL}/production/${id}/status`, { status });
 };
+
+export const deleteProductionPlan = async (id) => {
+    return await axios.delete(`${API_URL}/production-plan/${id}`);
+};

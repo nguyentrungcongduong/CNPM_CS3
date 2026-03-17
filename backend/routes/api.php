@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RecipeController;
 use App\Http\Controllers\Api\CoordinatorOrderController;
 use App\Http\Controllers\Api\KitchenOrderController;
 use App\Http\Controllers\Api\KitchenProductionController;
+use App\Http\Controllers\Api\KitchenBatchController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -78,8 +79,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // Production Plans
         Route::get('/production-plan', [KitchenProductionController::class, 'index']);
         Route::post('/production-plan', [KitchenProductionController::class, 'store']);
+        Route::delete('/production-plan/{id}', [KitchenProductionController::class, 'destroy']);
         Route::get('/production-plan/{id}/ingredients', [KitchenProductionController::class, 'checkIngredients']);
         Route::put('/production/{id}/status', [KitchenProductionController::class, 'updateStatus']);
+
+        // Production Batches
+        Route::post('/batch/create', [KitchenBatchController::class, 'create']);
     });
 
     // ---- Store Routes ----
