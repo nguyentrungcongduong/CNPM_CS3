@@ -86,6 +86,8 @@ const BREADCRUMB_MAP = {
   '/supply/orders': ['Supply Coordinator', 'Duyệt đơn hàng'],
   '/supply/summary': ['Supply Coordinator', 'Tổng hợp nhu cầu'],
   '/kitchen': ['Kitchen Staff'],
+  '/kitchen/orders': ['Kitchen Staff', 'Đơn hàng'],
+  '/kitchen/production': ['Kitchen Staff', 'Kế hoạch sản xuất'],
   '/store': ['Store Area'],
   '/store/orders': ['Store Area', 'Đơn hàng'],
   '/store/orders/new': ['Store Area', 'Tạo đơn hàng'],
@@ -149,13 +151,13 @@ function MainLayout() {
           ],
         }]
       : []),
-    ...(roleCode === 'CENTRAL_KITCHEN_STAFF' 
+    ...(roleCode === 'CENTRAL_KITCHEN_STAFF' || roleCode === 'KITCHEN_STAFF'
       ? [{
           key: 'kitchen-group',
           icon: <HomeOutlined />,
           label: 'Bếp trung tâm',
           children: [
-            { key: '/kitchen', icon: <HomeOutlined />, label: <Link to="/kitchen">Tổng quan</Link> },
+            { key: '/kitchen', icon: <DashboardOutlined />, label: <Link to="/kitchen">Tổng quan</Link> },
             { key: '/kitchen/orders', icon: <FileTextOutlined />, label: <Link to="/kitchen/orders">Danh sách đơn</Link> },
             { key: '/kitchen/production', icon: <FileTextOutlined />, label: <Link to="/kitchen/production">Kế hoạch sản xuất</Link> },
           ],
@@ -269,9 +271,9 @@ function App() {
           <Route path="supply"  element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR']}><SupplyCoordinatorPage /></ProtectedRoute>} />
           <Route path="supply/orders" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorOrdersPage /></ProtectedRoute>} />
           <Route path="supply/summary" element={<ProtectedRoute allowedRoles={['SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN']}><CoordinatorSummaryPage /></ProtectedRoute>} />
-          <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
-          <Route path="kitchen/orders" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenOrdersPage /></ProtectedRoute>} />
-          <Route path="kitchen/production" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF']}><KitchenProductionPage /></ProtectedRoute>} />
+          <Route path="kitchen" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenStaffPage /></ProtectedRoute>} />
+          <Route path="kitchen/orders" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenOrdersPage /></ProtectedRoute>} />
+          <Route path="kitchen/production" element={<ProtectedRoute allowedRoles={['CENTRAL_KITCHEN_STAFF', 'KITCHEN_STAFF']}><KitchenProductionPage /></ProtectedRoute>} />
           <Route path="store"   element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StorePage /></ProtectedRoute>} />
           <Route path="store/orders" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrdersPage /></ProtectedRoute>} />
           <Route path="store/orders/new" element={<ProtectedRoute allowedRoles={['STORE_STAFF']}><StoreOrderCreatePage /></ProtectedRoute>} />

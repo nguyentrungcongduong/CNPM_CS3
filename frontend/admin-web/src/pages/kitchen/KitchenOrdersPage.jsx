@@ -10,91 +10,31 @@ import {
   Modal,
   Empty,
   message,
-  Select,
   Drawer,
   Descriptions,
-  Alert,
   Divider,
+  DatePicker,
+  Tooltip,
 } from 'antd';
 import {
   FileSearchOutlined,
   ReloadOutlined,
-  RightCircleOutlined,
-  FireOutlined,
-  CarOutlined,
-  CheckCircleOutlined,
-  InboxOutlined,
-  TrophyOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { kitchenOrderService } from '../../api/kitchenOrderService';
 import { OrderStatusBadge, OrderStatusSteps } from '../../components/OrderStatus';
 import { ORDER_STATUS, STATUS_LABELS, ORDER_STEPS } from '../../constants/orderStatus';
+import { createProductionPlan } from '../../api/productionService';
+import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
 // -----------------------------------------------------------------------
-// Map: current status → action button config (what kitchen can do next)
-// -----------------------------------------------------------------------
-const NEXT_ACTION = {
-  [ORDER_STATUS.CONFIRMED]: {
-    nextStatus: ORDER_STATUS.IN_PRODUCTION,
-    label: 'Bắt đầu sản xuất',
-    icon: <FireOutlined />,
-    confirmTitle: 'Bắt đầu sản xuất đơn này?',
-    color: 'purple',
-  },
-  [ORDER_STATUS.IN_PRODUCTION]: {
-    nextStatus: ORDER_STATUS.READY,
-    label: 'Đánh dấu Sẵn sàng',
-    icon: <CheckCircleOutlined />,
-    confirmTitle: 'Xác nhận sản xuất hoàn tất?',
-    color: 'cyan',
-  },
-  [ORDER_STATUS.READY]: {
-    nextStatus: ORDER_STATUS.IN_DELIVERY,
-    label: 'Xuất giao hàng',
-    icon: <CarOutlined />,
-    confirmTitle: 'Xác nhận xuất kho – bàn giao cho tài xế?',
-    color: 'orange',
-  },
-  [ORDER_STATUS.IN_DELIVERY]: {
-    nextStatus: ORDER_STATUS.DELIVERED,
-    label: 'Xác nhận đã giao',
-    icon: <InboxOutlined />,
-    confirmTitle: 'Xác nhận hàng đã tới cửa hàng?',
-    color: 'lime',
-  },
-  [ORDER_STATUS.DELIVERED]: {
-    nextStatus: ORDER_STATUS.COMPLETED,
-    label: 'Hoàn tất đơn',
-    icon: <TrophyOutlined />,
-    confirmTitle: 'Hoàn tất đơn hàng này?',
-    color: 'green',
-  },
-};
-
-// -----------------------------------------------------------------------
 // Order Detail Drawer
 // -----------------------------------------------------------------------
-function OrderDetailDrawer({ open, onClose, order, onStatusUpdate }) {
+function OrderDetailDrawer({ open, onClose, order }) {
   if (!order) return null;
-  const action = NEXT_ACTION[order.status];
-
-  const handleAdvance = () => {
-    if (!action) return;
-    Modal.confirm({
-      title: action.confirmTitle,
-      content: `Đơn: ${order.order_code} (${STATUS_LABELS[order.status]} → ${STATUS_LABELS[action.nextStatus]})`,
-      okText: action.label,
-      cancelText: 'Hủy',
-      async onOk() {
-        await kitchenOrderService.updateStatus(order.id, { status: action.nextStatus });
-        message.success(`Đã cập nhật trạng thái: ${STATUS_LABELS[action.nextStatus]}`);
-        onStatusUpdate?.();
-        onClose();
-      },
-    });
-  };
 
   return (
     <Drawer
@@ -111,18 +51,6 @@ function OrderDetailDrawer({ open, onClose, order, onStatusUpdate }) {
         header: { borderBottom: '1px solid #f0f0f0' },
         body: { background: '#f5f5f5' },
       }}
-      extra={
-        action && (
-          <Button
-            type="primary"
-            icon={action.icon}
-            onClick={handleAdvance}
-            style={{ background: action.color, borderColor: action.color }}
-          >
-            {action.label}
-          </Button>
-        )
-      }
     >
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         {/* Status stepper */}
@@ -240,26 +168,30 @@ function OrderDetailDrawer({ open, onClose, order, onStatusUpdate }) {
 // Main Page
 // -----------------------------------------------------------------------
 export default function KitchenOrdersPage() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState(null);
   const [selected, setSelected] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [creatingPlanForId, setCreatingPlanForId] = useState(null);
 
   const fetchOrders = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const params = { page, per_page: pagination.pageSize };
-      if (statusFilter) params.status = statusFilter;
-      const res = await kitchenOrderService.list(params);
+      const res = await kitchenOrderService.list({
+        page,
+        per_page: pagination.pageSize,
+        date: selectedDate?.format('YYYY-MM-DD'),
+      });
       const payload = res.data || res;
       setOrders(payload.data || []);
       setPagination((p) => ({ ...p, current: payload.current_page, total: payload.total }));
     } finally {
       setLoading(false);
     }
-  }, [pagination.pageSize, statusFilter]);
+  }, [pagination.pageSize, selectedDate]);
 
   useEffect(() => { fetchOrders(1); }, [fetchOrders]);
 
@@ -273,30 +205,42 @@ export default function KitchenOrdersPage() {
     }
   };
 
-  const handleAdvanceDirect = (record) => {
-    const action = NEXT_ACTION[record.status];
-    if (!action) return;
+  const handleCreatePlan = (record) => {
     Modal.confirm({
-      title: action.confirmTitle,
-      content: `Đơn: ${record.order_code} → ${STATUS_LABELS[action.nextStatus]}`,
-      okText: action.label,
+      title: 'Tạo kế hoạch sản xuất cho đơn này?',
+      content: (
+        <div>
+          <div><Text strong>Mã đơn:</Text> <Tag color="geekblue">{record.order_code}</Tag></div>
+          <div style={{ marginTop: 6 }}>
+            <Text strong>Ngày:</Text>{' '}
+            <Text>{selectedDate ? selectedDate.format('YYYY-MM-DD') : '—'}</Text>
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <Text type="secondary">
+              Kế hoạch sẽ chỉ lấy sản phẩm từ <Text strong>1 đơn</Text> (không tự gom tất cả đơn trong ngày).
+            </Text>
+          </div>
+        </div>
+      ),
+      okText: 'Tạo kế hoạch',
       cancelText: 'Hủy',
       async onOk() {
-        await kitchenOrderService.updateStatus(record.id, { status: action.nextStatus });
-        message.success(`Cập nhật: ${STATUS_LABELS[action.nextStatus]}`);
-        fetchOrders(pagination.current);
+        setCreatingPlanForId(record.id);
+        try {
+          await createProductionPlan({
+            plan_date: selectedDate?.format('YYYY-MM-DD'),
+            order_id: record.id,
+          });
+          message.success('Đã tạo kế hoạch sản xuất. Chuyển sang màn hình Kế hoạch sản xuất…');
+          navigate('/kitchen/production');
+        } catch (e) {
+          message.error(e?.response?.data?.message || 'Không thể tạo kế hoạch sản xuất');
+        } finally {
+          setCreatingPlanForId(null);
+        }
       },
     });
   };
-
-  const kitchenStatusOptions = [
-    ORDER_STATUS.CONFIRMED,
-    ORDER_STATUS.IN_PRODUCTION,
-    ORDER_STATUS.READY,
-    ORDER_STATUS.IN_DELIVERY,
-    ORDER_STATUS.DELIVERED,
-    ORDER_STATUS.COMPLETED,
-  ].map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 
   const columns = [
     {
@@ -325,6 +269,13 @@ export default function KitchenOrdersPage() {
       render: (v) => v ? new Date(v).toLocaleString('vi-VN') : '—',
     },
     {
+      title: 'Ngày yêu cầu',
+      dataIndex: 'required_date',
+      key: 'required_date',
+      width: 130,
+      render: (v) => v ? new Date(v).toLocaleDateString('vi-VN') : '—',
+    },
+    {
       title: 'Số SP',
       key: 'items_count',
       width: 80,
@@ -341,25 +292,26 @@ export default function KitchenOrdersPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 240,
+      width: 260,
       render: (_, record) => {
-        const action = NEXT_ACTION[record.status];
+        const canCreatePlan = record.status === 'APPROVED';
         return (
           <Space>
             <Button size="small" icon={<FileSearchOutlined />} onClick={() => openDetail(record)}>
               Xem
             </Button>
-            {action && (
+            <Tooltip title={canCreatePlan ? null : 'Đơn chưa được duyệt'}>
               <Button
                 size="small"
                 type="primary"
-                icon={action.icon}
-                onClick={() => handleAdvanceDirect(record)}
-                style={{ background: action.color, borderColor: action.color }}
+                icon={<PlusOutlined />}
+                loading={creatingPlanForId === record.id}
+                disabled={!canCreatePlan}
+                onClick={() => handleCreatePlan(record)}
               >
-                {action.label}
+                Tạo kế hoạch
               </Button>
-            )}
+            </Tooltip>
           </Space>
         );
       },
@@ -377,19 +329,17 @@ export default function KitchenOrdersPage() {
       >
         <Space style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <Space direction="vertical" size={2}>
-            <Text strong>Đơn hàng cần xử lý tại bếp</Text>
+            <Text strong>Đơn hàng theo ngày</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Tiến hành sản xuất và cập nhật trạng thái từng bước theo quy trình.
+              Chọn ngày để xem danh sách đơn. Bếp sẽ <Text strong>chọn từng đơn</Text> để tạo kế hoạch sản xuất.
             </Text>
           </Space>
           <Space>
-            <Select
-              value={statusFilter}
-              onChange={(v) => setStatusFilter(v)}
-              placeholder="Lọc theo trạng thái"
-              allowClear
-              style={{ width: 200 }}
-              options={kitchenStatusOptions}
+            <DatePicker
+              value={selectedDate}
+              onChange={(d) => setSelectedDate(d || dayjs())}
+              format="YYYY-MM-DD"
+              allowClear={false}
             />
             <Button icon={<ReloadOutlined />} onClick={() => fetchOrders(pagination.current)}>
               Làm mới
@@ -422,7 +372,6 @@ export default function KitchenOrdersPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         order={selected}
-        onStatusUpdate={() => fetchOrders(pagination.current)}
       />
     </>
   );

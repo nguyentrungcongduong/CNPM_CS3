@@ -64,6 +64,7 @@ class Order extends Model
         'in_delivery_at',
         'delivered_at',
         'completed_at',
+        'kitchen_processed_at',
     ];
 
     protected $casts = [
@@ -75,6 +76,7 @@ class Order extends Model
         'in_delivery_at'       => 'datetime',
         'delivered_at'         => 'datetime',
         'completed_at'         => 'datetime',
+        'kitchen_processed_at' => 'datetime',
     ];
 
     // ---------------------------------------------------------------

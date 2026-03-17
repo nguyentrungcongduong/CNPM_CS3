@@ -52,7 +52,7 @@ class StoreOrderController extends Controller
         }
 
         $validated = $request->validate([
-            'required_date' => 'nullable|date',
+            'required_date' => 'required|date',
             'note' => 'nullable|string',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'items' => 'required|array|min:1',
@@ -72,7 +72,7 @@ class StoreOrderController extends Controller
                 'created_by' => $user->id,
                 'status' => 'PENDING',
                 'order_date' => now(),
-                'required_date' => $validated['required_date'] ?? null,
+                'required_date' => $validated['required_date'],
                 'note' => $validated['note'] ?? null,
             ]);
 

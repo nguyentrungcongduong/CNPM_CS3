@@ -14,8 +14,14 @@ class ProductionService
     public function aggregateOrders($date)
     {
         $orders = Order::with('items.item')
-            ->whereDate('required_date', $date)
-            ->whereIn('status', ['CONFIRMED'])
+            ->where(function ($q) use ($date) {
+                // Preferred: required_date (requested delivery/need-by date)
+                // Fallback: order_date (creation timestamp) when required_date is not set
+                $q->whereDate('required_date', $date)
+                  ->orWhereDate('order_date', $date);
+            })
+            // Accept orders that are ready/authorized for production planning
+            ->whereIn('status', ['CONFIRMED', 'APPROVED'])
             ->whereNull('production_plan_id')
             ->get();
             

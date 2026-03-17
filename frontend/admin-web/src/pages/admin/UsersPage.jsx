@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { userService, roleService } from '../../api/userService';
 import { storeService } from '../../api/storeService';
+import { kitchenService } from '../../api/kitchenService';
 
 const { Title } = Typography;
 
@@ -19,12 +20,16 @@ export default function UsersPage() {
   const [users, setUsers]       = useState([]);
   const [roles, setRoles]       = useState([]);
   const [stores, setStores]     = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
   const [filters, setFilters]   = useState({ search: '', role_id: undefined, status: undefined });
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing]   = useState(null);
   const [form] = Form.useForm();
+  const selectedRoleId = Form.useWatch('role_id', form);
+  const selectedRoleCode = roles.find(r => r.id === selectedRoleId)?.code;
+  const isKitchenStaff = selectedRoleCode === 'KITCHEN_STAFF';
 
   const fetchUsers = useCallback(async (page = 1, extraFilters = {}) => {
     setLoading(true);
@@ -47,19 +52,46 @@ export default function UsersPage() {
   useEffect(() => {
     roleService.getAll().then(r => setRoles(r.data));
     storeService.getList().then(r => setStores(r.data));
+    kitchenService.getAll({ page: 1, per_page: 200, status: 'ACTIVE' }).then(r => {
+      setWarehouses(r.data.data || []);
+    });
   }, []);
 
-  const openCreate = () => { setEditing(null); form.resetFields(); setModalOpen(true); };
-  const openEdit   = (rec) => { setEditing(rec); form.setFieldsValue({ ...rec, role_id: rec.role?.id, store_id: rec.store?.id }); setModalOpen(true); };
+  const openCreate = () => {
+    setEditing(null);
+    form.resetFields();
+    setModalOpen(true);
+  };
+
+  const openEdit = (rec) => {
+    setEditing(rec);
+    form.setFieldsValue({
+      ...rec,
+      role_id: rec.role?.id,
+      store_id: rec.store?.id,
+      warehouse_id: rec.warehouse?.id,
+    });
+    setModalOpen(true);
+  };
 
   const handleSave = async () => {
     try {
       const vals = await form.validateFields();
+      const roleCode = roles.find(r => r.id === vals.role_id)?.code;
+      const payload = { ...vals };
+
+      // Kitchen staff should be assigned to a warehouse, and must not belong to a store.
+      if (roleCode === 'KITCHEN_STAFF') {
+        payload.store_id = null;
+      } else {
+        payload.warehouse_id = null;
+      }
+
       if (editing) {
-        await userService.update(editing.id, vals);
+        await userService.update(editing.id, payload);
         message.success('Cập nhật thành công!');
       } else {
-        await userService.create(vals);
+        await userService.create(payload);
         message.success('Tạo người dùng thành công!');
       }
       setModalOpen(false);
@@ -224,6 +256,10 @@ export default function UsersPage() {
                 <Select
                   placeholder="Chọn vai trò"
                   options={roles.map(r => ({ value: r.id, label: r.name }))}
+                  onChange={() => {
+                    // Reset dependent fields when switching role
+                    form.setFieldsValue({ store_id: null, warehouse_id: null });
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -235,15 +271,31 @@ export default function UsersPage() {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="store_id" label="Cửa hàng (nếu có)">
-            <Select
-              placeholder="Chọn cửa hàng"
-              allowClear
-              options={stores.map(s => ({ value: s.id, label: `[${s.code}] ${s.name}` }))}
-              showSearch
-              filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
-            />
-          </Form.Item>
+          {isKitchenStaff ? (
+            <Form.Item
+              name="warehouse_id"
+              label="Bếp/Kho (bắt buộc cho nhân viên bếp)"
+              rules={[{ required: true, message: 'Vui lòng chọn bếp/kho' }]}
+            >
+              <Select
+                placeholder="Chọn bếp/kho..."
+                allowClear
+                options={warehouses.map(w => ({ value: w.id, label: `[${w.code}] ${w.name}` }))}
+                showSearch
+                filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+              />
+            </Form.Item>
+          ) : (
+            <Form.Item name="store_id" label="Cửa hàng (nếu có)">
+              <Select
+                placeholder="Chọn cửa hàng"
+                allowClear
+                options={stores.map(s => ({ value: s.id, label: `[${s.code}] ${s.name}` }))}
+                showSearch
+                filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+              />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </>

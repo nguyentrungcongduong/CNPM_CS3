@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Card, Row, Col, Typography, Table, Tag, Statistic, Space, Divider,
+  Card, Row, Col, Typography, Table, Tag, Statistic, Space, Divider, Button, Modal, message, Alert,
 } from 'antd';
 import {
-  UserOutlined, ShopOutlined, HomeOutlined, SafetyOutlined,
+  UserOutlined, ShopOutlined, HomeOutlined, SafetyOutlined, WarningOutlined,
 } from '@ant-design/icons';
 import { roleService } from '../../api/userService';
+import { devService } from '../../api/devService';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -19,8 +20,44 @@ const ROLE_COLORS = {
 
 export default function SystemConfigPage() {
   const [roles, setRoles] = useState([]);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => { roleService.getAll().then(r => setRoles(r.data)); }, []);
+
+  const handleResetData = () => {
+    Modal.confirm({
+      title: 'Reset dữ liệu test?',
+      icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
+      content: (
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          <Alert
+            type="error"
+            showIcon
+            message="Chỉ dùng cho development/testing"
+            description="Thao tác này sẽ xóa dữ liệu Orders / Production Plans / Batches. Không thể hoàn tác."
+          />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Nếu hệ thống đang chạy production, API sẽ từ chối theo môi trường.
+          </Text>
+        </Space>
+      ),
+      okText: 'Reset dữ liệu test',
+      okButtonProps: { danger: true, loading: resetting },
+      cancelText: 'Hủy',
+      async onOk() {
+        setResetting(true);
+        try {
+          await devService.resetData();
+          message.success('Đã reset dữ liệu test. Đang tải lại hệ thống…');
+          window.location.reload();
+        } catch (e) {
+          message.error(e?.response?.data?.message || 'Reset thất bại');
+        } finally {
+          setResetting(false);
+        }
+      },
+    });
+  };
 
   const roleColumns = [
     { title: 'Mã vai trò', dataIndex: 'code', key: 'code', render: (c) => <Tag color={ROLE_COLORS[c] || 'default'}>{c}</Tag> },
@@ -96,7 +133,16 @@ export default function SystemConfigPage() {
       </Row>
 
       {/* Roles Table */}
-      <Card title="Danh sách Vai trò & Quyền hạn" variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <Card
+        title="Danh sách Vai trò & Quyền hạn"
+        variant="borderless"
+        style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+        extra={(
+          <Button danger onClick={handleResetData} loading={resetting}>
+            Reset dữ liệu test
+          </Button>
+        )}
+      >
         <Table
           rowKey="id"
           columns={roleColumns}

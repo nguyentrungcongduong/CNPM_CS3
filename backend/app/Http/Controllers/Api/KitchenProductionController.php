@@ -19,12 +19,27 @@ class KitchenProductionController extends Controller
         $this->productionService = $productionService;
     }
 
+    private function ensureKitchenOrAdmin(Request $request): void
+    {
+        $user = $request->user();
+        $roleCode = $user?->role?->code;
+
+        if (!in_array($roleCode, ['KITCHEN_STAFF', 'CENTRAL_KITCHEN_STAFF', 'ADMIN'])) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc Admin)',
+            ], 403));
+        }
+    }
+
     /**
      * Get list of production plans
      */
     public function index(Request $request)
     {
-        $plans = ProductionPlan::with(['items.item', 'creator'])
+        $this->ensureKitchenOrAdmin($request);
+
+        $plans = ProductionPlan::with(['items.item', 'creator', 'orders.store'])
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 15));
 
@@ -40,8 +55,11 @@ class KitchenProductionController extends Controller
      */
     public function store(Request $request)
     {
+        $this->ensureKitchenOrAdmin($request);
+
         $request->validate([
             'plan_date' => 'required|date',
+            'order_id'  => 'nullable|exists:orders,id',
             // It could receive items array or just generate based on date
             'items' => 'nullable|array',
             'items.*.item_id' => 'required|exists:items,id',
@@ -55,7 +73,32 @@ class KitchenProductionController extends Controller
 
             // If items are not provided, we aggregate from CONFIRMED orders
             $aggregatedData = null;
-            if (!$request->items) {
+            if ($request->filled('order_id')) {
+                $order = Order::with(['items.item', 'store'])
+                    ->findOrFail($request->order_id);
+
+                if ($order->status !== 'APPROVED') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Không thể tạo kế hoạch sản xuất: đơn hàng chưa được duyệt (trạng thái hiện tại: '{$order->status}').",
+                    ], 422);
+                }
+
+                if (!empty($order->production_plan_id)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Đơn hàng này đã được gán vào một kế hoạch sản xuất trước đó.',
+                    ], 422);
+                }
+
+                $itemsToProduce = $order->items->map(function ($oi) {
+                    $qty = $oi->approved_quantity ?? $oi->ordered_quantity;
+                    return [
+                        'item_id' => $oi->item_id,
+                        'quantity' => (float) $qty,
+                    ];
+                })->values()->toArray();
+            } elseif (!$request->items) {
                 $aggregatedData = $this->productionService->aggregateOrders($date);
                 $itemsToProduce = array_map(function($agg) {
                     return [
@@ -92,7 +135,9 @@ class KitchenProductionController extends Controller
             }
 
             // Update orders to associate with this production plan
-            if ($aggregatedData && isset($aggregatedData['orders'])) {
+            if ($request->filled('order_id')) {
+                Order::where('id', $request->order_id)->update(['production_plan_id' => $plan->id]);
+            } elseif ($aggregatedData && isset($aggregatedData['orders'])) {
                 foreach ($aggregatedData['orders'] as $order) {
                     $order->update(['production_plan_id' => $plan->id]);
                 }
@@ -103,7 +148,7 @@ class KitchenProductionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tạo kế hoạch sản xuất thành công.',
-                'data' => $plan->load('items.item')
+                'data' => $plan->load(['items.item', 'orders.store'])
             ], 201);
 
         } catch (\Exception $e) {
@@ -120,6 +165,8 @@ class KitchenProductionController extends Controller
      */
     public function checkIngredients($id)
     {
+        $this->ensureKitchenOrAdmin(request());
+
         $plan = ProductionPlan::with('items')->findOrFail($id);
         
         $itemsToProduce = [];
@@ -144,6 +191,8 @@ class KitchenProductionController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
+        $this->ensureKitchenOrAdmin($request);
+
         $request->validate([
             'status' => 'required|in:PENDING,IN_PROGRESS,COMPLETED,CANCELLED',
         ]);
@@ -162,6 +211,35 @@ class KitchenProductionController extends Controller
             'success' => true,
             'message' => 'Cập nhật trạng thái thành công.',
             'data' => $plan
+        ]);
+    }
+
+    /**
+     * DELETE /api/kitchen/production-plan/{id}
+     * Allow deletion when status = PENDING or COMPLETED.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        $this->ensureKitchenOrAdmin($request);
+
+        $plan = ProductionPlan::with('items')->findOrFail($id);
+
+        if (!in_array($plan->status, ['PENDING', 'COMPLETED'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Không thể xóa kế hoạch ở trạng thái '{$plan->status}'. Chỉ cho phép xóa khi PENDING hoặc COMPLETED.",
+            ], 422);
+        }
+
+        DB::transaction(function () use ($plan) {
+            ProductionPlanItem::where('production_plan_id', $plan->id)->delete();
+            // Hard delete to trigger FK nullOnDelete on orders.production_plan_id
+            $plan->forceDelete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa kế hoạch sản xuất thành công.',
         ]);
     }
 }
