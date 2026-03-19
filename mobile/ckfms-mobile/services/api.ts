@@ -4,8 +4,8 @@ import { tokenStorage } from './token.storage';
 // ===== CẤU HÌNH BASE URL =====
 // Thay đổi URL này khi chạy với backend thật.
 // Khi dùng Expo Go + máy tính cùng mạng WiFi:
-//   → Thay "localhost" bằng IP máy tính (VD: http://192.168.1.100:8000/api/v1)
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
+// Thay "localhost" bằng IP máy tính (VD: http://192.168.1.100:8000/api)
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.12:8000/api';
 
 const api = axios.create({
     baseURL: BASE_URL,

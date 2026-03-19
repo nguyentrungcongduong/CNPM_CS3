@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
@@ -199,6 +200,9 @@ class CoordinatorOrderController extends Controller
         }
         $order->save();
 
+        // Gửi notification async cho store staff
+        SendOrderNotification::dispatch($order, 'status_changed', Order::STATUS_CONFIRMED);
+
         return response()->json([
             'success' => true,
             'message' => 'Đã xác nhận đơn hàng thành công',
@@ -233,6 +237,9 @@ class CoordinatorOrderController extends Controller
         $order->cancel_reason = $validated['cancel_reason'] ?? null;
         $order->save();
 
+        // Gửi notification async cho store staff
+        SendOrderNotification::dispatch($order, 'status_changed', Order::STATUS_REJECTED);
+
         return response()->json([
             'success' => true,
             'message' => 'Đã từ chối đơn hàng',
@@ -264,6 +271,9 @@ class CoordinatorOrderController extends Controller
         $order->status        = Order::STATUS_CANCELLED;
         $order->cancel_reason = $validated['cancel_reason'] ?? null;
         $order->save();
+
+        // Gửi notification async cho store staff
+        SendOrderNotification::dispatch($order, 'status_changed', Order::STATUS_CANCELLED);
 
         return response()->json([
             'success' => true,

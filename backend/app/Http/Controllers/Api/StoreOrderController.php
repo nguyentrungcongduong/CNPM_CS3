@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
@@ -120,5 +121,82 @@ class StoreOrderController extends Controller
             'data' => $order,
         ]);
     }
-}
 
+    /**
+     * PUT /api/store/orders/{id}/submit
+     * Chuyển trạng thái DRAFT → SUBMITTED và báo cho Coordinator
+     */
+    public function submit(Request $request, int $id)
+    {
+        $user = $request->user();
+
+        if (!$user->store_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Người dùng không thuộc cửa hàng nào',
+            ], 403);
+        }
+
+        $order = Order::with(['items.item', 'store'])
+            ->where('store_id', $user->store_id)
+            ->findOrFail($id);
+
+        if ($order->status !== Order::STATUS_DRAFT) {
+            return response()->json([
+                'success' => false,
+                'message' => "Chỉ có thể gửi đơn ở trạng thái DRAFT.",
+            ], 422);
+        }
+
+        $order->status = Order::STATUS_SUBMITTED;
+        $order->save();
+
+        // Gửi notification cần thông báo cho Coordinator về đơn mới
+        SendOrderNotification::dispatch($order, 'new_order');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã gửi đơn hàng thành công',
+            'data'    => $order->fresh(['store', 'items.item']),
+        ]);
+    }
+
+    /**
+     * PUT /api/store/orders/{id}/cancel
+     * Hủy đơn (DRAFT hoặc SUBMITTED)
+     */
+    public function cancel(Request $request, int $id)
+    {
+        $user = $request->user();
+
+        if (!$user->store_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Người dùng không thuộc cửa hàng nào',
+            ], 403);
+        }
+
+        $order = Order::where('store_id', $user->store_id)->findOrFail($id);
+
+        if (!in_array($order->status, [Order::STATUS_DRAFT, Order::STATUS_SUBMITTED])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ có thể hủy đơn ở trạng thái DRAFT hoặc SUBMITTED.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'cancel_reason' => 'nullable|string|max:500',
+        ]);
+
+        $order->status        = Order::STATUS_CANCELLED;
+        $order->cancel_reason = $validated['cancel_reason'] ?? null;
+        $order->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã hủy đơn hàng',
+            'data'    => $order->fresh(['store', 'items.item']),
+        ]);
+    }
+}

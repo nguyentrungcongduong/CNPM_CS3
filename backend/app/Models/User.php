@@ -29,6 +29,7 @@ class User extends Authenticatable
         'username',
         'password',
         'status',
+        'expo_push_token',
     ];
 
     /**
