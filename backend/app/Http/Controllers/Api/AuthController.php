@@ -16,15 +16,20 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required_without:username|string',
+            'username' => 'required_without:email|string',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $loginField = $request->input('email') ?? $request->input('username');
+
+        $user = User::where('email', $loginField)
+            ->orWhere('username', $loginField)
+            ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Thông tin đăng nhập không chính xác.'],
+                'username' => ['Thông tin đăng nhập không chính xác.']
             ]);
         }
 
@@ -64,5 +69,39 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user()->load(['role', 'store', 'warehouse']));
+    }
+
+    /**
+     * POST /api/push-token
+     * Mobile app gọi sau khi login để lưu Expo Push Token
+     */
+    public function registerPushToken(Request $request)
+    {
+        $validated = $request->validate([
+            'expo_push_token' => 'required|string|starts_with:ExponentPushToken[',
+        ]);
+
+        $request->user()->update([
+            'expo_push_token' => $validated['expo_push_token'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Push token đã được lưu.',
+        ]);
+    }
+
+    /**
+     * DELETE /api/push-token
+     * Xóa push token khi logout (tránh gửi notification cho user đã logout)
+     */
+    public function removePushToken(Request $request)
+    {
+        $request->user()->update(['expo_push_token' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Push token đã được xóa.',
+        ]);
     }
 }

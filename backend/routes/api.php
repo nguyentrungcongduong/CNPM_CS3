@@ -27,6 +27,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
+    // Push Notification Token
+    Route::post('/push-token', [AuthController::class, 'registerPushToken']);
+    Route::delete('/push-token', [AuthController::class, 'removePushToken']);
+
     // ---- Admin Routes ----
     Route::prefix('admin')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);

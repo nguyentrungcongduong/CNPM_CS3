@@ -17,15 +17,26 @@ class UserSeeder extends Seeder
         $managerRole = Role::where('code', 'MANAGER')->first();
         $kitchenRole = Role::where('code', 'KITCHEN_STAFF')->first();
         $storeStaffRole = Role::where('code', 'STORE_STAFF')->first();
+        $coordinatorRole = Role::where('code', 'SUPPLY_COORDINATOR')->first();
 
         $stores = Store::orderBy('id')->get();
         $primaryStore = $stores->get(0);
         $secondStore = $stores->get(1) ?? $primaryStore;
         $thirdStore = $stores->get(2) ?? $primaryStore;
-
         $warehouse = Warehouse::orderBy('id')->first();
 
         $users = [
+            // Supply Coordinator
+            [
+                'full_name' => 'Điều phối viên 1',
+                'email' => 'coordinator1@example.com',
+                'phone' => '0900000010',
+                'username' => 'coordinator1',
+                'password' => '123456',
+                'role' => $coordinatorRole,
+                'store' => null,
+                'warehouse' => null,
+            ],
             // Admin
             [
                 'full_name' => 'Admin System',

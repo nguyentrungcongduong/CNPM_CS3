@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderNotification;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
@@ -180,6 +181,16 @@ class KitchenOrderController extends Controller
         }
 
         $order->save();
+
+        // Gửi notification async cho store staff
+        if (in_array($newStatus, [
+            Order::STATUS_IN_PRODUCTION,
+            Order::STATUS_READY,
+            Order::STATUS_IN_DELIVERY,
+            Order::STATUS_DELIVERED,
+        ])) {
+            SendOrderNotification::dispatch($order, 'status_changed', $newStatus);
+        }
 
         return response()->json([
             'success' => true,

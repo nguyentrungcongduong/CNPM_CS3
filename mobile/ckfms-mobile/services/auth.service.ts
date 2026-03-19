@@ -18,22 +18,27 @@ interface LoginResponse {
 
 export const authService = {
     /**
-     * Đăng nhập – gọi POST /api/v1/auth/login
-     * Tự động lưu token vào SecureStore sau khi thành công
+     * Đăng nhập – gọi POST /api/login
+     * Tự động lưu token vào SecureStore / LocalStorage sau khi thành công
      */
     async login(credentials: LoginCredentials): Promise<LoginResponse> {
-        const response = await api.post<{ success: boolean; data: LoginResponse }>(
-            '/auth/login',
+        const response = await api.post<{ access_token: string; user: any }>(
+            '/login',
             credentials
         );
-        const { token, refreshToken } = response.data.data;
+        const token = response.data.access_token;
+        const user = response.data.user;
 
         await tokenStorage.saveToken(token);
-        if (refreshToken) {
-            await tokenStorage.saveRefreshToken(refreshToken);
-        }
 
-        return response.data.data;
+        return {
+            token: token,
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role?.code || 'GUEST',
+            }
+        };
     },
 
     /**
