@@ -116,6 +116,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/orders', [StoreOrderController::class, 'store']);
         Route::get('/orders/{id}', [StoreOrderController::class, 'show']);
 
+        // Nhận hàng từ QR Code lô hàng
+        Route::get('/batches/{batch_code}', [StoreInventoryController::class, 'getBatch']);
+        Route::post('/receive-batch', [StoreInventoryController::class, 'receiveBatch']);
+
         // Store submit đơn DRAFT → SUBMITTED
         Route::put('/orders/{id}/submit', [StoreOrderController::class, 'submit']);
 

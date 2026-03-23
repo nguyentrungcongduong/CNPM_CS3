@@ -19,7 +19,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ckfms.mobile",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "NSCameraUsageDescription": "Cho phép ứng dụng sử dụng camera để quét mã QR nhận hàng."
       }
     },
     "android": {
@@ -31,7 +34,8 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -49,6 +53,12 @@
           "color": "#1d4ed8",
           "defaultChannel": "ckfms-orders",
           "sounds": []
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép ứng dụng sử dụng camera để quét mã QR nhận hàng."
         }
       ]
     ],
