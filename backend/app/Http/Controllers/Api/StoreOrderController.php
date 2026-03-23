@@ -112,7 +112,14 @@ class StoreOrderController extends Controller
             ], 403);
         }
 
-        $order = Order::with(['items.item', 'store'])
+        $order = Order::with([
+            'items.item',
+            'store',
+            'statusHistories' => function ($query) {
+                $query->orderBy('created_at', 'asc');
+            },
+            'statusHistories.changedBy:id,name'
+        ])
             ->where('store_id', $user->store_id)
             ->findOrFail($id);
 
