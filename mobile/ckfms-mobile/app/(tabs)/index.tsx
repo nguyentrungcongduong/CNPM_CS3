@@ -1,5 +1,6 @@
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useEffect, useState } from 'react';
+import { Link } from 'expo-router';
 import { tokenStorage } from '@/services/token.storage';
 
 export default function HomeScreen() {
@@ -29,12 +30,14 @@ export default function HomeScreen() {
                     Thao tác nhanh
                 </Text>
                 <View className="flex-row gap-3 mb-5">
-                    <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
-                        <Text className="text-2xl mb-1">📦</Text>
-                        <Text className="text-slate-600 text-sm font-medium text-center">
-                            Nhận hàng
-                        </Text>
-                    </View>
+                    <Link href="/scan" asChild>
+                        <Pressable className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
+                            <Text className="text-2xl mb-1">📦</Text>
+                            <Text className="text-slate-600 text-sm font-medium text-center">
+                                Nhận hàng
+                            </Text>
+                        </Pressable>
+                    </Link>
                     <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
                         <Text className="text-2xl mb-1">📋</Text>
                         <Text className="text-slate-600 text-sm font-medium text-center">
