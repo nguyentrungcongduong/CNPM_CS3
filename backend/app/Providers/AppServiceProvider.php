@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
+use App\Observers\OrderObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register Order observer to track status changes
+        Order::observe(OrderObserver::class);
+
         // ensure sqlite database file exists and schema is applied when using sqlite driver
         if (config('database.default') === 'sqlite') {
             $dbPath = database_path(config('database.connections.sqlite.database', 'database.sqlite'));

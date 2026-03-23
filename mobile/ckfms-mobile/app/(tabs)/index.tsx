@@ -38,18 +38,22 @@ export default function HomeScreen() {
                             </Text>
                         </Pressable>
                     </Link>
-                    <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
-                        <Text className="text-2xl mb-1">📋</Text>
-                        <Text className="text-slate-600 text-sm font-medium text-center">
-                            Đặt hàng
-                        </Text>
-                    </View>
-                    <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
-                        <Text className="text-2xl mb-1">📊</Text>
-                        <Text className="text-slate-600 text-sm font-medium text-center">
-                            Tồn kho
-                        </Text>
-                    </View>
+                    <Link href="/create-order" asChild>
+                        <Pressable className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
+                            <Text className="text-2xl mb-1">📋</Text>
+                            <Text className="text-slate-600 text-sm font-medium text-center">
+                                Đặt hàng
+                            </Text>
+                        </Pressable>
+                    </Link>
+                    <Link href="/inventory" asChild>
+                        <Pressable className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-slate-100 items-center">
+                            <Text className="text-2xl mb-1">📊</Text>
+                            <Text className="text-slate-600 text-sm font-medium text-center">
+                                Tồn kho
+                            </Text>
+                        </Pressable>
+                    </Link>
                 </View>
 
                 {/* Status */}
