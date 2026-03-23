@@ -102,10 +102,10 @@ export default function OrdersScreen() {
                 )}
 
                 <View className="flex-row gap-2 mt-2">
-                    {/* store details view button - can be expanded to new page */}
+                    {/* Navigate to order detail page */}
                     <Pressable 
                         className="flex-1 bg-slate-100 py-2 rounded-lg items-center"
-                        onPress={() => Alert.alert('Chi tiết', 'Giả lập xem chi tiết. ' + item.items.map((i: any) => i.item?.name).join(', '))}
+                        onPress={() => router.push(`/order/${item.id}`)}
                     >
                         <Text className="text-slate-700 font-medium">Chi tiết</Text>
                     </Pressable>
