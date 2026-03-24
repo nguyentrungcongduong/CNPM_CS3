@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class OrderStatusHistory extends Model
 {
+    public $timestamps = false;
+
     protected $fillable = [
         'order_id',
         'from_status',

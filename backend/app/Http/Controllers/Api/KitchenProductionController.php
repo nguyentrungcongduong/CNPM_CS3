@@ -197,20 +197,51 @@ class KitchenProductionController extends Controller
             'status' => 'required|in:PENDING,IN_PROGRESS,COMPLETED,CANCELLED',
         ]);
 
-        $plan = ProductionPlan::findOrFail($id);
-        
-        // Maybe do some logic when completing production (like reducing inventory for ingredients)
-        // For now, we simply update the status
-        $plan->update([
-            'status' => $request->status,
-        ]);
+        $plan = ProductionPlan::with('orders')->findOrFail($id);
+        $targetStatus = $request->status;
 
-        // If you want to update associated orders' status as well, you can do it here
+        DB::transaction(function () use ($plan, $targetStatus) {
+            $plan->update([
+                'status' => $targetStatus,
+            ]);
+
+            // Sync linked order statuses with production lifecycle.
+            // NOTE: Never move orders to COMPLETED from production stage.
+            if ($targetStatus === 'IN_PROGRESS') {
+                Order::query()
+                    ->where('production_plan_id', $plan->id)
+                    ->whereIn('status', [
+                        Order::STATUS_SUBMITTED,
+                        Order::STATUS_CONFIRMED,
+                        'APPROVED', // legacy
+                    ])
+                    ->update([
+                        'status' => Order::STATUS_IN_PRODUCTION,
+                        'production_started_at' => now(),
+                    ]);
+            }
+
+            if ($targetStatus === 'COMPLETED') {
+                Order::query()
+                    ->where('production_plan_id', $plan->id)
+                    ->whereIn('status', [
+                        Order::STATUS_IN_PRODUCTION,
+                        Order::STATUS_CONFIRMED,
+                        'APPROVED', // legacy fallback
+                    ])
+                    ->update([
+                        // No READY_FOR_DELIVERY status in current model; use IN_DELIVERY.
+                        'status' => Order::STATUS_IN_DELIVERY,
+                        'ready_at' => now(),
+                        'in_delivery_at' => now(),
+                    ]);
+            }
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật trạng thái thành công.',
-            'data' => $plan
+            'data' => $plan->fresh(['orders'])
         ]);
     }
 

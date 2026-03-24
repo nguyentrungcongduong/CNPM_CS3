@@ -17,7 +17,7 @@ import {
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet, Link, useLocation } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import ForbiddenPage from './pages/Forbidden'
-import ManagerPage from './pages/ManagerPage'
+import ManagerDashboardPage from './pages/manager/ManagerDashboardPage'
 import StorePage from './pages/StorePage'
 import SupplyCoordinatorPage from './pages/SupplyCoordinatorPage'
 import KitchenStaffPage from './pages/KitchenStaffPage'
@@ -81,7 +81,7 @@ const BREADCRUMB_MAP = {
   '/admin/kitchens': ['Admin', 'Quản lý Bếp'],
   '/admin/recipes': ['Admin', 'Quản lý Công thức'],
   '/admin/config': ['Admin', 'Cấu hình hệ thống'],
-  '/manager': ['Manager Area'],
+  '/manager': ['Manager', 'Dashboard'],
   '/manager/kitchen-inventory': ['Manager', 'Tồn kho Bếp Trung Tâm'],
   '/manager/store-inventory': ['Manager', 'Tồn kho Cửa hàng'],
   '/manager/orders': ['Manager', 'Đơn hàng từ cửa hàng'],
@@ -123,7 +123,7 @@ function MainLayout() {
 
   // Manager submenu items
   const managerSubItems = [
-    { key: '/manager', icon: <ShopOutlined />, label: <Link to="/manager">Manager Home</Link> },
+    { key: '/manager', icon: <DashboardOutlined />, label: <Link to="/manager">Dashboard</Link> },
     { key: '/manager/kitchen-inventory', icon: <HomeOutlined />, label: <Link to="/manager/kitchen-inventory">Tồn kho Bếp TT</Link> },
     { key: '/manager/store-inventory', icon: <ShopOutlined />, label: <Link to="/manager/store-inventory">Tồn kho Cửa hàng</Link> },
     { key: '/manager/orders', icon: <FileTextOutlined />, label: <Link to="/manager/orders">Đơn hàng từ cửa hàng</Link> },
@@ -269,7 +269,7 @@ function App() {
           <Route path="admin/config"  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemConfigPage /></ProtectedRoute>} />
 
           {/* Manager routes */}
-          <Route path="manager" element={<ProtectedRoute allowedRoles={['MANAGER']}><ManagerPage /></ProtectedRoute>} />
+          <Route path="manager" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><ManagerDashboardPage /></ProtectedRoute>} />
           <Route path="manager/kitchen-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><KitchenInventoryPage /></ProtectedRoute>} />
           <Route path="manager/store-inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><StoreInventoryPage /></ProtectedRoute>} />
           <Route path="manager/orders" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><ManagerOrdersPage /></ProtectedRoute>} />

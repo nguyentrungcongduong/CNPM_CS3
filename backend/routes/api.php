@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\CoordinatorDeliveryController;
 use App\Http\Controllers\Api\KitchenOrderController;
 use App\Http\Controllers\Api\KitchenProductionController;
 use App\Http\Controllers\Api\KitchenBatchController;
+use App\Http\Controllers\Api\ManagerReportController;
 use App\Http\Controllers\Api\DevController;
 
 // Public routes
@@ -44,6 +45,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---- Manager Routes ----
     Route::prefix('manager')->group(function () {
+        // Dashboard + Reports
+        Route::get('/dashboard', [ManagerReportController::class, 'dashboard']);
+        Route::get('/reports/inventory', [ManagerReportController::class, 'inventoryReport']);
+        Route::get('/reports/production', [ManagerReportController::class, 'productionReport']);
+        Route::get('/reports/orders-summary', [ManagerReportController::class, 'ordersSummary']);
+
         // Tồn kho Bếp Trung Tâm
         Route::get('/inventory', [ManagerInventoryController::class, 'index']);
         Route::get('/inventory/transactions', [ManagerInventoryController::class, 'transactions']);
