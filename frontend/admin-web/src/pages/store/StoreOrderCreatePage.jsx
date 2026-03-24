@@ -57,15 +57,20 @@ export default function StoreOrderCreatePage() {
 
     setSubmitting(true);
     try {
+      const normalizedItems = values.items.map((row) => {
+        const option = itemsOptions.find((opt) => opt.value === row.item_id);
+        return {
+          item_id: row.item_id,
+          ordered_quantity: Number(row.ordered_quantity),
+          unit: row.unit || option?.unit || null,
+          note: row.item_note || null,
+        };
+      });
+
       await storeOrderService.create({
         required_date: values.required_date ? values.required_date.format('YYYY-MM-DD') : null,
         note: values.note || null,
-        items: values.items.map((row) => ({
-          item_id: row.item_id,
-          ordered_quantity: row.ordered_quantity,
-          unit: row.unit,
-          note: row.item_note || null,
-        })),
+        items: normalizedItems,
       });
       message.success('Tạo đơn hàng thành công');
       navigate('/store/orders');
