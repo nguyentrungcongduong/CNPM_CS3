@@ -37,7 +37,10 @@ class ItemController extends Controller
         }
 
         $items = $query->orderBy('created_at', 'desc')->get();
-        return response()->json($items);
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
     }
 
     /**

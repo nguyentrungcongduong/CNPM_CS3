@@ -29,9 +29,7 @@ export default function ManagerItemsPage() {
     setLoading(true);
     try {
       const res = await itemService.getItems({ search: searchText });
-      console.log('API Response:', res);
-      console.log('Items data:', res.data);
-      setItems(res.data || []);
+      setItems(res.data?.data || []);
     } catch (err) {
       console.error('API Error:', err);
       message.error('Không thể tải danh sách hàng hóa');
