@@ -50,6 +50,7 @@ class Order extends Model
         'order_code',
         'store_id',
         'warehouse_id',
+        'production_plan_id',
         'created_by',
         'approved_by',
         'confirmed_by',
@@ -99,6 +100,11 @@ class Order extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function productionPlan()
+    {
+        return $this->belongsTo(\App\Models\ProductionPlan::class, 'production_plan_id');
     }
 
     public function creator()

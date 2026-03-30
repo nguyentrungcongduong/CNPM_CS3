@@ -217,7 +217,7 @@ export default function KitchenInventoryPage() {
                     <Select placeholder="Bếp trung tâm" style={{ width: 200 }} allowClear value={filters.warehouse_id} onChange={v => setFilters(f => ({ ...f, warehouse_id: v }))} options={kitchens.map(k => ({ value: k.id, label: `[${k.code}] ${k.name}` }))} />
                   </Col>
                   <Col>
-                    <Button icon={<WarningOutlined />} type={filters.low_stock ? 'primary' : 'default'} danger={filters.low_stock} onClick={() => setFilters(f => ({ ...f, low_stock: !f.low_stock }))}>Sắp hết</Button>
+                    <Button icon={<WarningOutlined />} type={filters.low_stock ? 'primary' : 'default'} danger={filters.low_stock} onClick={() => { setFilters(f => ({ ...f, low_stock: !f.low_stock })); fetchStock(1); }}>Sắp hết</Button>
                   </Col>
                   <Col>
                     <Space>

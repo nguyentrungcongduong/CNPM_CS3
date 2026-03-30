@@ -55,8 +55,9 @@ export default function KitchenProductionPage() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchResultOpen, setBatchResultOpen] = useState(false);
-  const [createdBatch, setCreatedBatch] = useState(null);
-  const [batchForm] = Form.useForm();
+  const [createdBatches, setCreatedBatches] = useState([]);
+  const [batchInputs, setBatchInputs] = useState([]);
+  const [batchNote, setBatchNote] = useState('');
 
   const fetchPlans = useCallback(async (page = 1) => {
     setLoading(true);
@@ -147,36 +148,56 @@ export default function KitchenProductionPage() {
 
   const openCompleteWithBatch = (plan) => {
     setSelectedPlan(plan);
-    const firstItem = (plan.items || [])[0];
-    batchForm.setFieldsValue({
-      item_id: firstItem?.item_id,
-      quantity: firstItem?.planned_quantity ? Number(firstItem.planned_quantity) : null,
-      production_date: plan.plan_date ? dayjs(plan.plan_date) : dayjs(),
-      expiry_date: null,
+    // Khởi tạo batchInputs cho tất cả items trong kế hoạch
+    const initialInputs = (plan.items || []).map((item, index) => ({
+      key: index,
+      item_id: item.item_id,
+      item_name: item.item?.name || `Item #${item.item_id}`,
+      item_code: item.item?.code || '',
+      unit: item.unit || 'kg',
+      required_quantity: Number(item.planned_quantity || 0),
+      actual_quantity: Number(item.planned_quantity || 0), // Default = số cần SX
+      production_date: plan.plan_date || dayjs().format('YYYY-MM-DD'),
+      expiry_date: dayjs().add(7, 'day').format('YYYY-MM-DD'), // Default = 7 ngày sau
       note: '',
-    });
+    }));
+    setBatchInputs(initialInputs);
+    setBatchNote('');
     setBatchModalOpen(true);
   };
 
   const submitCreateBatch = async () => {
+    // Validate all inputs
+    for (const input of batchInputs) {
+      if (!input.actual_quantity || input.actual_quantity <= 0) {
+        message.error(`Chưa nhập số lượng sản xuất cho: ${input.item_name}`);
+        return;
+      }
+      if (!input.expiry_date) {
+        message.error(`Chưa nhập hạn sử dụng cho: ${input.item_name}`);
+        return;
+      }
+    }
+
+    setBatchSubmitting(true);
     try {
-      const vals = await batchForm.validateFields();
-      setBatchSubmitting(true);
       const payload = {
-        order_id: selectedPlan?.orders?.[0]?.id || null,
-        item_id: vals.item_id,
-        quantity: vals.quantity,
-        production_date: vals.production_date ? vals.production_date.format('YYYY-MM-DD') : null,
-        expiry_date: vals.expiry_date ? vals.expiry_date.format('YYYY-MM-DD') : null,
-        note: vals.note || null,
+        production_plan_id: selectedPlan?.id,
+        note: batchNote || null,
+        batches: batchInputs.map(input => ({
+          item_id: input.item_id,
+          quantity: input.actual_quantity,
+          production_date: input.production_date,
+          expiry_date: input.expiry_date,
+        })),
       };
 
-      const res = await kitchenBatchService.create(payload);
-      const batch = res.data || res;
-      setCreatedBatch(batch);
-      message.success(res.message || 'Tạo lô sản xuất thành công');
+      const res = await kitchenBatchService.createMultiple(payload);
+      const batches = res.data?.batches || res.data || [];
+      setCreatedBatches(Array.isArray(batches) ? batches : [batches]);
+      message.success(res.message || `Tạo thành công ${batches.length} lô sản xuất`);
 
-      // Mark plan as completed after creating batch (keep existing workflow)
+      // Mark plan as completed after creating batches
       if (selectedPlan?.id) {
         await updateProductionStatus(selectedPlan.id, 'COMPLETED');
         fetchPlans(pagination.current);
@@ -186,7 +207,7 @@ export default function KitchenProductionPage() {
       setBatchModalOpen(false);
       setBatchResultOpen(true);
     } catch (e) {
-      // validation or API error is handled by antd + axios interceptor
+      message.error(e?.response?.data?.message || 'Lỗi khi tạo lô sản xuất');
     } finally {
       setBatchSubmitting(false);
     }
@@ -206,11 +227,12 @@ export default function KitchenProductionPage() {
     return JSON.stringify(qrObj);
   };
 
-  const copyBatchCode = async () => {
-    if (!createdBatch?.batch_code) return;
+  const copyBatchCodes = async () => {
+    if (!createdBatches?.length) return;
     try {
-      await navigator.clipboard.writeText(createdBatch.batch_code);
-      message.success('Đã copy batch code');
+      const codes = createdBatches.map(b => b.batch_code).join('\n');
+      await navigator.clipboard.writeText(codes);
+      message.success(`Đã copy ${createdBatches.length} mã lô`);
     } catch {
       message.error('Không thể copy. Vui lòng thử lại.');
     }
@@ -387,104 +409,144 @@ export default function KitchenProductionPage() {
         )}
       </Drawer>
 
-      {/* Complete → Create Batch Modal */}
+      {/* Complete → Create Multiple Batches Modal */}
       <Modal
         title={
           <Space>
             <QrcodeOutlined />
-            <span>Xác nhận tạo lô sản xuất</span>
+            <span>📦 Tạo lô sản xuất — {selectedPlan?.plan_code}</span>
           </Space>
         }
         open={batchModalOpen}
         onCancel={() => setBatchModalOpen(false)}
         onOk={submitCreateBatch}
-        okText="Tạo lô & Hoàn thành"
+        okText="Tạo tất cả lô ✅"
         cancelText="Hủy"
         okButtonProps={{ loading: batchSubmitting }}
-        width={720}
+        width={800}
         destroyOnHidden
       >
         <Card
           bordered={false}
-          style={{ borderRadius: 10, background: '#fafafa', border: '1px solid #f0f0f0' }}
+          style={{ borderRadius: 10, background: '#f6ffed', border: '1px solid #b7eb8f', marginBottom: 16 }}
           bodyStyle={{ padding: 16 }}
         >
           <Space direction="vertical" size={2} style={{ width: '100%' }}>
-            <Text strong>Ghi nhận lô sản xuất</Text>
+            <Text strong style={{ color: '#389e0d' }}>Ghi nhận lô sản xuất</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Kiểm tra thông tin lô. Khi xác nhận, hệ thống sẽ tạo batch, cập nhật tồn kho và đánh dấu kế hoạch là “Hoàn thành”.
+              Điền số lượng thực tế và HSD cho từng sản phẩm. Hệ thống sẽ tạo tất cả lô cùng lúc.
             </Text>
           </Space>
         </Card>
 
-        <Form
-          form={batchForm}
-          layout="vertical"
-          style={{ marginTop: 16 }}
+        {/* Table of items to produce */}
+        <Card
+          title={<Text strong>Danh sách sản phẩm cần sản xuất</Text>}
+          size="small"
+          style={{ marginBottom: 16 }}
         >
-          <Row gutter={16}>
-            <Col xs={24} md={14}>
-              <Form.Item
-                name="item_id"
-                label="Sản phẩm"
-                rules={[{ required: true, message: 'Vui lòng chọn sản phẩm' }]}
-              >
-                <Select
-                  placeholder="Chọn sản phẩm trong kế hoạch..."
-                  options={(selectedPlan?.items || []).map((it) => ({
-                    value: it.item_id,
-                    label: it.item?.name ? `${it.item.name} (${it.unit})` : `Item #${it.item_id}`,
-                  }))}
-                  showSearch
-                  optionFilterProp="label"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={10}>
-              <Form.Item
-                name="quantity"
-                label="Số lượng sản xuất"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập số lượng' },
-                  { type: 'number', min: 0.001, message: 'Số lượng phải > 0' },
-                ]}
-              >
-                <InputNumber style={{ width: '100%' }} min={0.001} step={1} />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Table
+            dataSource={batchInputs}
+            pagination={false}
+            size="small"
+            rowKey="key"
+            columns={[
+              {
+                title: 'Sản phẩm',
+                key: 'product',
+                render: (_, record) => (
+                  <Space direction="vertical" size={0}>
+                    <Tag color="geekblue">{record.item_code}</Tag>
+                    <Text strong>{record.item_name}</Text>
+                  </Space>
+                ),
+              },
+              {
+                title: 'Cần SX',
+                key: 'required',
+                width: 100,
+                align: 'right',
+                render: (_, record) => (
+                  <Text type="secondary">{record.required_quantity} {record.unit}</Text>
+                ),
+              },
+              {
+                title: 'Thực tế',
+                key: 'actual',
+                width: 140,
+                render: (_, record, index) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0.001}
+                    step={0.001}
+                    precision={3}
+                    value={record.actual_quantity}
+                    onChange={(val) => {
+                      const updated = [...batchInputs];
+                      updated[index].actual_quantity = val || 0;
+                      setBatchInputs(updated);
+                    }}
+                    addonAfter={record.unit}
+                  />
+                ),
+              },
+              {
+                title: 'Ngày SX',
+                key: 'prod_date',
+                width: 130,
+                render: (_, record, index) => (
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    format="YYYY-MM-DD"
+                    value={record.production_date ? dayjs(record.production_date) : null}
+                    onChange={(date) => {
+                      const updated = [...batchInputs];
+                      updated[index].production_date = date ? date.format('YYYY-MM-DD') : null;
+                      setBatchInputs(updated);
+                    }}
+                    allowClear={false}
+                  />
+                ),
+              },
+              {
+                title: 'Hạn sử dụng *',
+                key: 'expiry',
+                width: 130,
+                render: (_, record, index) => (
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    format="YYYY-MM-DD"
+                    value={record.expiry_date ? dayjs(record.expiry_date) : null}
+                    onChange={(date) => {
+                      const updated = [...batchInputs];
+                      updated[index].expiry_date = date ? date.format('YYYY-MM-DD') : null;
+                      setBatchInputs(updated);
+                    }}
+                    placeholder="Bắt buộc"
+                    allowClear={false}
+                  />
+                ),
+              },
+            ]}
+          />
+        </Card>
 
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="production_date"
-                label="Ngày sản xuất"
-                rules={[{ required: true, message: 'Chọn ngày sản xuất' }]}
-              >
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="expiry_date"
-                label="Ngày hết hạn"
-                tooltip="Nếu có HSD, vui lòng chọn lớn hơn hoặc bằng ngày sản xuất"
-              >
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="note" label="Ghi chú (tuỳ chọn)">
-            <Input.TextArea rows={3} placeholder="Ví dụ: Ca sáng, line 1..." maxLength={1000} showCount />
-          </Form.Item>
-        </Form>
+        <Form.Item label="Ghi chú chung (tuỳ chọn)">
+          <Input.TextArea 
+            rows={2} 
+            placeholder="Ví dụ: Ca sáng, line 1..." 
+            maxLength={1000} 
+            showCount 
+            value={batchNote}
+            onChange={(e) => setBatchNote(e.target.value)}
+          />
+        </Form.Item>
       </Modal>
 
       {/* Batch Result Drawer with QR */}
       <Drawer
-        title="Kết quả tạo lô sản xuất"
-        width={820}
+        title={`✅ Đã tạo ${createdBatches.length} lô sản xuất`}
+        width={900}
         open={batchResultOpen}
         onClose={() => setBatchResultOpen(false)}
         styles={{
@@ -492,13 +554,13 @@ export default function KitchenProductionPage() {
           body: { background: '#f5f5f5' },
         }}
         extra={
-          createdBatch && (
+          createdBatches.length > 0 && (
             <Space>
-              <Tooltip title="Copy batch code">
-                <Button icon={<CopyOutlined />} onClick={copyBatchCode} />
+              <Tooltip title="Copy tất cả mã lô">
+                <Button icon={<CopyOutlined />} onClick={copyBatchCodes}>Copy mã</Button>
               </Tooltip>
-              <Tooltip title="In tem QR (mở hộp thoại in)">
-                <Button icon={<PrinterOutlined />} onClick={() => window.print()} />
+              <Tooltip title="In tất cả tem QR">
+                <Button icon={<PrinterOutlined />} onClick={() => window.print()}>In QR</Button>
               </Tooltip>
               <Button type="primary" onClick={() => setBatchResultOpen(false)}>
                 Đóng
@@ -507,87 +569,74 @@ export default function KitchenProductionPage() {
           )
         }
       >
-        {createdBatch ? (
+        {createdBatches.length > 0 ? (
           <Space direction="vertical" style={{ width: '100%' }} size="large">
             <Result
               status="success"
-              title="Tạo lô sản xuất thành công"
-              subTitle="Bạn có thể in/scan QR code để tra cứu lô và phục vụ kiểm kê."
+              title={`Tạo thành công ${createdBatches.length} lô sản xuất`}
+              subTitle="Tất cả lô đã được tạo, cập nhật tồn kho và đánh dấu kế hoạch hoàn thành."
             />
 
-            <Card
-              variant="borderless"
-              style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
-              bodyStyle={{ padding: 18 }}
-            >
-              <Row gutter={[16, 16]} align="top">
-                <Col xs={24} md={14}>
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>Batch code</Text>
-                      <div style={{ marginTop: 6 }}>
-                        <Tag color="geekblue" style={{ fontWeight: 700, fontSize: 14, padding: '2px 10px' }}>
-                          {createdBatch.batch_code}
-                        </Tag>
-                      </div>
-                    </div>
-
-                    <Divider style={{ margin: 0 }} />
-
+            {/* Danh sách tất cả các lô */}
+            {createdBatches.map((batch, index) => (
+              <Card
+                key={batch.id || index}
+                variant="borderless"
+                title={
+                  <Space>
+                    <Tag color="geekblue">{batch.batch_code}</Tag>
+                    <Text strong>{batch.item?.name || `Sản phẩm #${batch.item_id}`}</Text>
+                  </Space>
+                }
+                style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
+                bodyStyle={{ padding: 18 }}
+              >
+                <Row gutter={[16, 16]} align="top">
+                  <Col xs={24} md={14}>
                     <Descriptions size="small" column={1} bordered>
-                      <Descriptions.Item label="Sản phẩm">
-                        {createdBatch.item ? createdBatch.item.name : `#${createdBatch.item_id}`}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Kho bếp">
-                        {createdBatch.warehouse ? createdBatch.warehouse.name : `#${createdBatch.warehouse_id}`}
-                      </Descriptions.Item>
                       <Descriptions.Item label="Số lượng">
-                        <Text strong>{Number(createdBatch.quantity).toFixed(3)}</Text>
+                        <Text strong>{Number(batch.quantity).toFixed(3)} {batch.item?.unit || 'kg'}</Text>
                       </Descriptions.Item>
                       <Descriptions.Item label="Ngày sản xuất">
-                        {createdBatch.mfg_date ? new Date(createdBatch.mfg_date).toLocaleDateString('vi-VN') : '—'}
+                        {batch.mfg_date ? new Date(batch.mfg_date).toLocaleDateString('vi-VN') : '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label="Hạn sử dụng">
-                        {createdBatch.expiry_date ? new Date(createdBatch.expiry_date).toLocaleDateString('vi-VN') : '—'}
+                        {batch.expiry_date ? new Date(batch.expiry_date).toLocaleDateString('vi-VN') : '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label="Trạng thái">
-                        <Tag color="green" style={{ fontWeight: 600 }}>{createdBatch.status}</Tag>
+                        <Tag color="green" style={{ fontWeight: 600 }}>{batch.status}</Tag>
                       </Descriptions.Item>
                     </Descriptions>
+                  </Col>
 
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      QR payload: {`{ batch_code, item_id, warehouse_id, quantity, mfg_date, expiry_date, status }`}
-                    </Text>
-                  </Space>
-                </Col>
-
-                <Col xs={24} md={10}>
-                  <Card
-                    bordered={false}
-                    style={{
-                      borderRadius: 12,
-                      background: '#fafafa',
-                      border: '1px dashed #d9d9d9',
-                      height: '100%',
-                    }}
-                    bodyStyle={{ textAlign: 'center', padding: 16 }}
-                  >
-                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                      <Space size={8} style={{ justifyContent: 'center' }}>
-                        <QrcodeOutlined style={{ color: '#1890ff' }} />
-                        <Text strong>QR Code</Text>
+                  <Col xs={24} md={10}>
+                    <Card
+                      bordered={false}
+                      style={{
+                        borderRadius: 12,
+                        background: '#fafafa',
+                        border: '1px dashed #d9d9d9',
+                        height: '100%',
+                      }}
+                      bodyStyle={{ textAlign: 'center', padding: 16 }}
+                    >
+                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                        <Space size={8} style={{ justifyContent: 'center' }}>
+                          <QrcodeOutlined style={{ color: '#1890ff' }} />
+                          <Text strong>QR Code</Text>
+                        </Space>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          <QRCodeCanvas value={getQrPayload(batch)} size={200} includeMargin />
+                        </div>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          Quét QR để tra cứu.
+                        </Text>
                       </Space>
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <QRCodeCanvas value={getQrPayload(createdBatch)} size={220} includeMargin />
-                      </div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Quét QR để tra cứu nhanh thông tin lô.
-                      </Text>
-                    </Space>
-                  </Card>
-                </Col>
-              </Row>
-            </Card>
+                    </Card>
+                  </Col>
+                </Row>
+              </Card>
+            ))}
           </Space>
         ) : (
           <Empty description="Chưa có dữ liệu lô" />

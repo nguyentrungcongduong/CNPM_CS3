@@ -15,44 +15,28 @@ class StoreSeeder extends Seeder
     {
         $stores = [
             [
-                'code' => 'STORE001',
-                'name' => 'Cửa hàng Quận 1',
+                'code' => 'STORE-A',
+                'name' => 'Store A - Quận 1',
                 'address' => '123 Lê Lợi, Quận 1, TP.HCM',
                 'phone' => '02812345678',
                 'manager_name' => 'Nguyễn Văn A',
                 'status' => 'ACTIVE',
             ],
             [
-                'code' => 'STORE002',
-                'name' => 'Cửa hàng Quận 3',
+                'code' => 'STORE-B',
+                'name' => 'Store B - Quận 3',
                 'address' => '45 Cách Mạng Tháng 8, Quận 3, TP.HCM',
                 'phone' => '02823456789',
                 'manager_name' => 'Trần Thị B',
                 'status' => 'ACTIVE',
             ],
             [
-                'code' => 'STORE003',
-                'name' => 'Cửa hàng Thủ Đức',
+                'code' => 'STORE-C',
+                'name' => 'Store C - Thủ Đức',
                 'address' => '88 Phạm Văn Đồng, TP.Thủ Đức',
                 'phone' => '02834567890',
                 'manager_name' => 'Lê Văn C',
                 'status' => 'ACTIVE',
-            ],
-            [
-                'code' => 'STORE004',
-                'name' => 'Cửa hàng Bình Thạnh',
-                'address' => '12 Điện Biên Phủ, Quận Bình Thạnh, TP.HCM',
-                'phone' => '02845678901',
-                'manager_name' => 'Phạm Thị D',
-                'status' => 'ACTIVE',
-            ],
-            [
-                'code' => 'STORE005',
-                'name' => 'Cửa hàng Tân Bình',
-                'address' => '200 Trường Chinh, Quận Tân Bình, TP.HCM',
-                'phone' => '02856789012',
-                'manager_name' => 'Đỗ Văn E',
-                'status' => 'INACTIVE',
             ],
         ];
 

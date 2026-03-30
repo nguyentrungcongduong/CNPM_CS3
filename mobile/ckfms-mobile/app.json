@@ -30,6 +30,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#ffffff"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.ckfms.mobile",
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -46,15 +47,6 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#1d4ed8",
-          "defaultChannel": "ckfms-orders",
-          "sounds": []
-        }
-      ],
       [
         "expo-camera",
         {

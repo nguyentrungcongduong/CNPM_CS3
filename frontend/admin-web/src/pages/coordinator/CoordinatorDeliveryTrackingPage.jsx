@@ -31,7 +31,7 @@ const ITEM_STATUS = {
 
 const nextAction = {
   PENDING:    { action: 'IN_TRANSIT', label: 'Xuất phát',     type: 'primary' },
-  IN_TRANSIT: { action: 'DELIVERED',  label: 'Hoàn thành giao', type: 'primary' },
+  // IN_TRANSIT không có action — chỉ Store Staff scan QR mới được hoàn thành
 };
 
 export default function CoordinatorDeliveryTrackingPage() {

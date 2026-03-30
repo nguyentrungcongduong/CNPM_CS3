@@ -25,7 +25,7 @@ import UsersPage from './pages/admin/UsersPage'
 import StoresPage from './pages/admin/StoresPage'
 import KitchensPage from './pages/admin/KitchensPage'
 import SystemConfigPage from './pages/admin/SystemConfigPage'
-import RecipesPage from './pages/admin/RecipesPage'
+import RecipesPage from './pages/manager/RecipesPage'
 import KitchenProductionPage from './pages/kitchen/KitchenProductionPage'
 import KitchenOrdersPage from './pages/kitchen/KitchenOrdersPage'
 import KitchenInventoryPage from './pages/manager/KitchenInventoryPage'
@@ -79,7 +79,7 @@ const BREADCRUMB_MAP = {
   '/admin/users': ['Admin', 'Quản lý Users'],
   '/admin/stores': ['Admin', 'Quản lý Cửa hàng'],
   '/admin/kitchens': ['Admin', 'Quản lý Bếp'],
-  '/admin/recipes': ['Admin', 'Quản lý Công thức'],
+  '/manager/recipes': ['Manager', 'Quản lý Công thức'],
   '/admin/config': ['Admin', 'Cấu hình hệ thống'],
   '/manager': ['Manager', 'Dashboard'],
   '/manager/kitchen-inventory': ['Manager', 'Tồn kho Bếp Trung Tâm'],
@@ -114,16 +114,16 @@ function MainLayout() {
 
   // Admin submenu items
   const adminSubItems = [
-    { key: '/admin/users',   icon: <TeamOutlined />,   label: <Link to="/admin/users">Người dùng</Link> },
+    { key: '/admin/users',   icon: <TeamOutlined />,   label: <Link to="/admin/users">Ngườii dùng</Link> },
     { key: '/admin/stores',  icon: <ShopOutlined />,   label: <Link to="/admin/stores">Cửa hàng</Link> },
     { key: '/admin/kitchens',icon: <HomeOutlined />,   label: <Link to="/admin/kitchens">Bếp Trung Tâm</Link> },
-    { key: '/admin/recipes', icon: <FileTextOutlined />,label: <Link to="/admin/recipes">Công thức</Link> },
     { key: '/admin/config',  icon: <SettingOutlined />,label: <Link to="/admin/config">Cấu hình</Link> },
   ];
 
   // Manager submenu items
   const managerSubItems = [
     { key: '/manager', icon: <DashboardOutlined />, label: <Link to="/manager">Dashboard</Link> },
+    { key: '/manager/recipes', icon: <FileTextOutlined />,label: <Link to="/manager/recipes">Công thức</Link> },
     { key: '/manager/kitchen-inventory', icon: <HomeOutlined />, label: <Link to="/manager/kitchen-inventory">Tồn kho Bếp TT</Link> },
     { key: '/manager/store-inventory', icon: <ShopOutlined />, label: <Link to="/manager/store-inventory">Tồn kho Cửa hàng</Link> },
     { key: '/manager/orders', icon: <FileTextOutlined />, label: <Link to="/manager/orders">Đơn hàng từ cửa hàng</Link> },
@@ -265,7 +265,7 @@ function App() {
           <Route path="admin/users"   element={<ProtectedRoute allowedRoles={['ADMIN']}><UsersPage /></ProtectedRoute>} />
           <Route path="admin/stores"  element={<ProtectedRoute allowedRoles={['ADMIN']}><StoresPage /></ProtectedRoute>} />
           <Route path="admin/kitchens" element={<ProtectedRoute allowedRoles={['ADMIN']}><KitchensPage /></ProtectedRoute>} />
-          <Route path="admin/recipes" element={<ProtectedRoute allowedRoles={['ADMIN']}><RecipesPage /></ProtectedRoute>} />
+          <Route path="manager/recipes" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><RecipesPage /></ProtectedRoute>} />
           <Route path="admin/config"  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemConfigPage /></ProtectedRoute>} />
 
           {/* Manager routes */}

@@ -110,11 +110,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Production Batches
         Route::post('/batch/create', [KitchenBatchController::class, 'create']);
+        Route::post('/batch/create-multiple', [KitchenBatchController::class, 'createMultiple']);
     });
 
     // ---- Store Routes ----
     Route::prefix('store')->group(function () {
         // Tồn kho của một cửa hàng
+        Route::get('/inventory/me', [StoreInventoryController::class, 'myInventory']);
         Route::get('/inventory/{store_id}', [StoreInventoryController::class, 'show']);
         Route::get('/inventory/{store_id}/transactions', [StoreInventoryController::class, 'transactions']);
 

@@ -142,6 +142,7 @@ class UserSeeder extends Seeder
                     'username' => $data['username'],
                     'password' => Hash::make($data['password']),
                     'status' => 'ACTIVE',
+                    'expo_push_token' => null, // Tắt thông báo điện thoại
                 ]
             );
         }

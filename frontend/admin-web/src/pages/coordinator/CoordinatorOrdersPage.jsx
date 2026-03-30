@@ -143,8 +143,25 @@ function OrderDetailDrawer({ open, onClose, order, onConfirm, onReject, onCancel
             <Descriptions.Item label="Ngày yêu cầu">
               {order.required_date ? new Date(order.required_date).toLocaleDateString('vi-VN') : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Ghi chú">
-              {order.note || <Text type="secondary">Không có</Text>}
+            <Descriptions.Item 
+              label="Ghi chú đơn hàng"
+              labelStyle={{ fontWeight: 'bold' }}
+            >
+              {console.log('Order note debug:', { orderCode: order.order_code, note: order.note })}
+              {order.note ? (
+                <div style={{ 
+                  background: '#f6ffed', 
+                  border: '1px solid #b7eb8f', 
+                  padding: '8px 12px', 
+                  borderRadius: '6px',
+                  color: '#389e0d'
+                }}
+                >
+                  {order.note}
+                </div>
+              ) : (
+                <Text type="secondary" italic>Không có ghi chú cho đơn hàng này</Text>
+              )}
             </Descriptions.Item>
           </Descriptions>
         </Card>

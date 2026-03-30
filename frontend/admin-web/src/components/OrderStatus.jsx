@@ -51,13 +51,26 @@ export function OrderStatusSteps({ status, size = 'small', direction = 'horizont
   const stepIndex = getStepIndex(status);
   const isError = [ORDER_STATUS.REJECTED, ORDER_STATUS.CANCELLED].includes(status);
 
-  const items = ORDER_STEPS.map((step, idx) => {
+  // Giảm số step hiển thị để cân đối layout - chỉ hiển thị các step quan trọng
+  const COMPACT_STEPS = [
+    { key: ORDER_STATUS.SUBMITTED,     label: 'Gửi đơn' },
+    { key: ORDER_STATUS.CONFIRMED,     label: 'Xác nhận' },
+    { key: ORDER_STATUS.IN_PRODUCTION, label: 'Sản xuất' },
+    { key: ORDER_STATUS.READY,         label: 'Sẵn sàng' },
+    { key: ORDER_STATUS.IN_DELIVERY,   label: 'Vận chuyển' },
+    { key: ORDER_STATUS.DELIVERED,     label: 'Đã giao' },
+    { key: ORDER_STATUS.COMPLETED,     label: 'Hoàn thành' },
+  ];
+
+  const items = COMPACT_STEPS.map((step, idx) => {
     let stepStatus = 'wait';
-    if (isError && idx === stepIndex) {
-      stepStatus = 'error';
-    } else if (idx < stepIndex) {
+    const actualIdx = getStepIndex(step.key);
+    
+    if (isError) {
+      stepStatus = 'wait';
+    } else if (actualIdx < stepIndex) {
       stepStatus = 'finish';
-    } else if (idx === stepIndex) {
+    } else if (actualIdx === stepIndex) {
       stepStatus = 'process';
     }
 
@@ -80,10 +93,14 @@ export function OrderStatusSteps({ status, size = 'small', direction = 'horizont
       <Steps
         size={size}
         direction={direction}
-        current={isError ? -1 : stepIndex}
+        current={isError ? -1 : (stepIndex > 0 ? stepIndex - 1 : 0)}
         status={isError ? 'error' : 'process'}
         items={items}
-        style={{ overflowX: 'auto' }}
+        style={{ 
+          overflowX: 'auto',
+          padding: '8px 0',
+        }}
+        labelPlacement="vertical"
       />
     </div>
   );

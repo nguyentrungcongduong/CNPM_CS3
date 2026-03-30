@@ -4,12 +4,28 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Inventory;
+use App\Models\InventoryTransaction;
 use App\Models\Store;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 
 class StoreInventoryController extends Controller
 {
+    public function myInventory(Request $request)
+    {
+        $user = $request->user();
+        $storeId = $user->store_id;
+
+        if (!$storeId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ngườii dùng không thuộc cửa hàng nào'
+            ], 403);
+        }
+
+        return $this->show($request, $storeId);
+    }
+
     public function show(Request $request, int $storeId)
     {
         $store = Store::findOrFail($storeId);
@@ -79,8 +95,20 @@ class StoreInventoryController extends Controller
 
     public function getBatch(Request $request, $batchCode)
     {
-        $batch = \App\Models\Batch::with(['item', 'warehouse'])->where('batch_code', $batchCode)->first();
+        \Log::info('getBatch called', ['batch_code' => $batchCode, 'url' => $request->url()]);
+        
+        // Decode nếu bị encode
+        $decodedCode = urldecode($batchCode);
+        
+        $batch = \App\Models\Batch::with(['item', 'warehouse'])
+            ->where(function($q) use ($batchCode, $decodedCode) {
+                $q->where('batch_code', $batchCode)
+                  ->orWhere('batch_code', $decodedCode);
+            })
+            ->first();
+            
         if (!$batch) {
+            \Log::warning('Batch not found', ['batch_code' => $batchCode, 'decoded' => $decodedCode]);
             return response()->json([
                 'success' => false,
                 'message' => 'Lô hàng không tồn tại',
@@ -99,7 +127,7 @@ class StoreInventoryController extends Controller
         if (!$user->store_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Người dùng không thuộc cửa hàng nào',
+                'message' => 'Ngườii dùng không thuộc cửa hàng nào',
             ], 403);
         }
 
@@ -107,9 +135,19 @@ class StoreInventoryController extends Controller
             'batch_code'       => 'required|exists:batches,batch_code',
             'quantity'         => 'required|numeric|min:0.001',
             'quality_feedback' => 'nullable|string',
+            'order_id'         => 'nullable|exists:orders,id',
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user) {
+        \Log::info('receiveBatch started', [
+            'batch_code' => $validated['batch_code'],
+            'quantity' => $validated['quantity'],
+            'store_id' => $user->store_id,
+            'user_id' => $user->id
+        ]);
+
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user) {
+                \Log::info('Transaction started');
             $sourceBatch = \App\Models\Batch::with('item')->where('batch_code', $validated['batch_code'])->first();
             $storeWarehouse = Warehouse::where('store_id', $user->store_id)->where('status', 'ACTIVE')->first();
 
@@ -171,14 +209,135 @@ class StoreInventoryController extends Controller
                 'note'            => $note,
             ]);
 
-            // Tùy chọn: Có thể trừ tồn kho / số lượng Batch của bếp (nếu quy trình quy định).
-            // Tạm thời đơn giản: chỉ nhập vào store.
+            // 4) Giảm tồn kho Kitchen (nguồn xuất hàng)
+            $kitchenInventory = Inventory::where('warehouse_id', $sourceBatch->warehouse_id)
+                ->where('item_id', $sourceBatch->item_id)
+                ->first();
 
+            if ($kitchenInventory) {
+                $kitchenOldQty = $kitchenInventory->quantity_on_hand;
+                $kitchenInventory->quantity_on_hand -= $validated['quantity'];
+                $kitchenInventory->quantity_available -= $validated['quantity'];
+                $kitchenInventory->last_updated_at = now();
+                $kitchenInventory->save();
+
+                // Log giao dịch xuất kho Kitchen
+                InventoryTransaction::create([
+                    'inventory_id'    => $kitchenInventory->id,
+                    'warehouse_id'    => $sourceBatch->warehouse_id,
+                    'item_id'         => $sourceBatch->item_id,
+                    'batch_id'        => $sourceBatch->id,
+                    'user_id'         => $user->id,
+                    'reference_type'  => 'transfer_to_store',
+                    'reference_id'    => $storeBatch->id,
+                    'type'            => 'OUT',
+                    'quantity'        => $validated['quantity'],
+                    'quantity_before' => $kitchenOldQty,
+                    'quantity_after'  => $kitchenInventory->quantity_on_hand,
+                    'note'            => "Xuất kho đến cửa hàng: {$storeWarehouse->name} (Lô: {$storeBatch->batch_code})",
+                ]);
+            }
+
+            // 5) Validate và cập nhật batch
+            if ($sourceBatch->delivery_status === 'received') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lô hàng này đã được nhận trước đó'
+                ], 422);
+            }
+
+            // Validate đúng store
+            if ($sourceBatch->order && $sourceBatch->order->store_id !== $user->store_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lô hàng này không thuộc cửa hàng của bạn'
+                ], 403);
+            }
+
+            // Cập nhật batch = received
+            $sourceBatch->update(['delivery_status' => 'received']);
+
+            // 6) Kiểm tra tất cả batch của đơn đã received chưa
+            if ($sourceBatch->order_id) {
+                $order = $sourceBatch->order;
+                
+                // Lấy tất cả batch của đơn này
+                $totalBatches = \App\Models\Batch::where('order_id', $order->id)->count();
+                $receivedBatches = \App\Models\Batch::where('order_id', $order->id)
+                    ->where('delivery_status', 'received')
+                    ->count();
+
+                // Nếu tất cả đã received → COMPLETED
+                if ($totalBatches > 0 && $totalBatches === $receivedBatches) {
+                    $order->update([
+                        'status'        => \App\Models\Order::STATUS_COMPLETED,
+                        'completed_at'  => now(),
+                        'delivered_at'  => now(),
+                    ]);
+                    
+                    // Cập nhật delivery status = COMPLETED nếu tất cả orders trong delivery đều completed
+                    $deliveryItem = \App\Models\DeliveryItem::where('order_id', $order->id)
+                        ->where('status', 'PENDING')
+                        ->first();
+                    
+                    if ($deliveryItem) {
+                        $deliveryItem->update([
+                            'status' => 'DELIVERED',
+                            'delivered_at' => now(),
+                        ]);
+                        
+                        // Kiểm tra tất cả orders trong delivery đã delivered chưa
+                        $delivery = $deliveryItem->delivery;
+                        $totalOrders = $delivery->items()->count();
+                        $deliveredOrders = $delivery->items()->where('status', 'DELIVERED')->count();
+                        
+                        if ($totalOrders > 0 && $totalOrders === $deliveredOrders) {
+                            $delivery->update([
+                                'status' => \App\Models\Delivery::STATUS_DELIVERED,
+                                'completed_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            \Log::info('Transaction completed successfully');
+            
+            // Tính số lô còn lại chưa nhận
+            $remainingBatches = 0;
+            $totalBatchesForOrder = 0;
+            if ($sourceBatch->order_id) {
+                $totalBatchesForOrder = \App\Models\Batch::where('order_id', $sourceBatch->order_id)->count();
+                $receivedBatches = \App\Models\Batch::where('order_id', $sourceBatch->order_id)
+                    ->where('delivery_status', 'received')
+                    ->count();
+                $remainingBatches = $totalBatchesForOrder - $receivedBatches;
+            }
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Nhận hàng thành công',
-                'data'    => $storeBatch->load(['item', 'warehouse'])
+                'message' => $remainingBatches > 0 
+                    ? "Nhận hàng thành công! Còn {$remainingBatches}/{$totalBatchesForOrder} lô chưa nhận."
+                    : 'Nhận hàng thành công! Tất cả lô đã được nhận.',
+                'data'    => [
+                    'batch' => $storeBatch->load(['item', 'warehouse']),
+                    'received_count' => $totalBatchesForOrder - $remainingBatches,
+                    'total_count' => $totalBatchesForOrder,
+                    'remaining_count' => $remainingBatches,
+                    'order_completed' => $remainingBatches === 0 && $totalBatchesForOrder > 0
+                ]
             ], 201);
         });
+        } catch (\Exception $e) {
+            \Log::error('receiveBatch failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi hệ thống: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

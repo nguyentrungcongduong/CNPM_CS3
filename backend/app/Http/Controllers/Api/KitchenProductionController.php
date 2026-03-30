@@ -134,13 +134,20 @@ class KitchenProductionController extends Controller
                 ]);
             }
 
-            // Update orders to associate with this production plan
+            // Update orders to associate with this production plan and change status to IN_PRODUCTION
             if ($request->filled('order_id')) {
-                Order::where('id', $request->order_id)->update(['production_plan_id' => $plan->id]);
+                Order::where('id', $request->order_id)
+                    ->update([
+                        'production_plan_id' => $plan->id,
+                        'status' => Order::STATUS_IN_PRODUCTION,
+                    ]);
             } elseif ($aggregatedData && isset($aggregatedData['orders'])) {
-                foreach ($aggregatedData['orders'] as $order) {
-                    $order->update(['production_plan_id' => $plan->id]);
-                }
+                $orderIds = collect($aggregatedData['orders'])->pluck('id')->toArray();
+                Order::whereIn('id', $orderIds)
+                    ->update([
+                        'production_plan_id' => $plan->id,
+                        'status' => Order::STATUS_IN_PRODUCTION,
+                    ]);
             }
 
             DB::commit();
@@ -230,10 +237,9 @@ class KitchenProductionController extends Controller
                         'APPROVED', // legacy fallback
                     ])
                     ->update([
-                        // No READY_FOR_DELIVERY status in current model; use IN_DELIVERY.
-                        'status' => Order::STATUS_IN_DELIVERY,
+                        // Kitchen hoàn thành → READY, chờ Coordinator lập lịch giao
+                        'status' => Order::STATUS_READY,
                         'ready_at' => now(),
-                        'in_delivery_at' => now(),
                     ]);
             }
         });
