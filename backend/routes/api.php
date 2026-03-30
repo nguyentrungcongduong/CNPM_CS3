@@ -39,7 +39,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('/stores', StoreController::class);
         Route::apiResource('/users', UserController::class);
         Route::apiResource('/kitchens', KitchenController::class);
-        Route::apiResource('/items', ItemController::class);
         Route::apiResource('/recipes', RecipeController::class);
     });
 
@@ -50,6 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/inventory', [ManagerReportController::class, 'inventoryReport']);
         Route::get('/reports/production', [ManagerReportController::class, 'productionReport']);
         Route::get('/reports/orders-summary', [ManagerReportController::class, 'ordersSummary']);
+
+        // Quản lý hàng hóa (Items)
+        Route::apiResource('/items', ItemController::class);
 
         // Tồn kho Bếp Trung Tâm
         Route::get('/inventory', [ManagerInventoryController::class, 'index']);
