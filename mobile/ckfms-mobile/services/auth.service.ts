@@ -71,7 +71,7 @@ export const authService = {
      * Lấy thông tin user đang đăng nhập
      */
     async getMe() {
-        const response = await api.get('/users/me');
-        return response.data.data;
+        const response = await api.get('/me');
+        return response.data;
     },
 };

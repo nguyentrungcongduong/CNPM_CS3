@@ -22,7 +22,7 @@ export default function InventoryScreen() {
       // Lấy thông tin store của user hiện tại từ /users/me
       let userStoreId = null;
       try {
-          const meRes = await api.get('/users/me'); // Dùng đúng endpoint /users/me trong auth.service
+          const meRes = await api.get('/me'); // Dùng endpoint /me
           const userData = meRes.data?.data || meRes.data?.user || meRes.data;
           userStoreId = userData?.store_id || userData?.store?.id;
           
