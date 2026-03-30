@@ -1,6 +1,6 @@
 import api from './axios';
 
-const BASE = '/admin/recipes';
+const BASE = '/manager/recipes';
 
 export const recipeService = {
   getRecipes: () => api.get(BASE),
@@ -9,6 +9,6 @@ export const recipeService = {
   deleteRecipe: (id) => api.delete(`${BASE}/${id}`),
 
   // Helper to fetch items for ingredient selector
-  getItems: () => api.get('/admin/items'),
+  getItems: () => api.get('/manager/items'),
 };
 
