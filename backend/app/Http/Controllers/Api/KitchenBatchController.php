@@ -20,7 +20,7 @@ class KitchenBatchController extends Controller
         $user = $request->user();
         $roleCode = $user?->role?->code;
 
-        if (!in_array($roleCode, ['KITCHEN_STAFF', 'CENTRAL_KITCHEN_STAFF'])) {
+        if ($roleCode !== 'KITCHEN_STAFF') {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff)',
@@ -73,8 +73,8 @@ class KitchenBatchController extends Controller
             ], 422);
         }
 
-        // Kitchen staff can only create batches for their own kitchen warehouse.
-        if ($roleCode === 'CENTRAL_KITCHEN_STAFF' && (int) $warehouseId !== (int) $user->warehouse_id) {
+        // Kitchen staff chỉ tạo lô cho kho bếp được gán (nếu user có warehouse_id).
+        if ($roleCode === 'KITCHEN_STAFF' && $user->warehouse_id && (int) $warehouseId !== (int) $user->warehouse_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không thể tạo lô cho kho khác',
@@ -163,9 +163,9 @@ class KitchenBatchController extends Controller
 
     /**
      * POST /api/kitchen/batch/create-multiple
-     * 
+     *
      * Tạo nhiều lô sản xuất cùng lúc cho 1 kế hoạch sản xuất
-     * 
+     *
      * Body:
      *  - production_plan_id (required)
      *  - batches[] (required array)
@@ -213,17 +213,17 @@ class KitchenBatchController extends Controller
 
         return DB::transaction(function () use ($validated, $warehouseId, $warehouse) {
             $createdBatches = [];
-            
+
             // Lấy tất cả orders của production plan này
             $planOrders = \App\Models\Order::where('production_plan_id', $validated['production_plan_id'])
                 ->whereIn('status', [\App\Models\Order::STATUS_IN_PRODUCTION, \App\Models\Order::STATUS_READY])
                 ->with('items')
                 ->get();
-            
+
             foreach ($validated['batches'] as $batchData) {
                 // 1) Create batch
                 $batchCode = $this->generateUniqueBatchCode();
-                
+
                 // Tìm order chứa item này
                 $orderId = null;
                 foreach ($planOrders as $order) {
@@ -301,4 +301,3 @@ class KitchenBatchController extends Controller
         });
     }
 }
-

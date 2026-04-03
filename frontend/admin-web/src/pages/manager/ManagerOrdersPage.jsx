@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Card,
   Table,
@@ -9,33 +9,12 @@ import {
   Badge,
   Modal,
   Empty,
-  message,
-} from 'antd';
-import {
-  FileSearchOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
-import { managerOrderService } from '../../api/managerOrderService';
+} from "antd";
+import { FileSearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { managerOrderService } from "../../api/managerOrderService";
+import { OrderStatusBadge } from "../../components/OrderStatus";
 
 const { Title, Text } = Typography;
-
-const STATUS_COLORS = {
-  PENDING: 'orange',
-  APPROVED: 'green',
-  REJECTED: 'red',
-  PROCESSING: 'blue',
-  COMPLETED: 'purple',
-};
-
-const STATUS_LABELS = {
-  PENDING: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Đã từ chối',
-  PROCESSING: 'Đang xử lý',
-  COMPLETED: 'Hoàn tất',
-};
 
 export default function ManagerOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -56,12 +35,12 @@ export default function ManagerOrdersPage() {
           page,
           per_page: pagination.pageSize,
         });
-        const payload = res.data || res;
-        setOrders(payload.data || []);
+        const page = res?.data ?? res;
+        setOrders(page?.data ?? []);
         setPagination((prev) => ({
           ...prev,
-          current: payload.current_page,
-          total: payload.total,
+          current: page?.current_page ?? 1,
+          total: page?.total ?? 0,
         }));
       } finally {
         setLoading(false);
@@ -79,68 +58,23 @@ export default function ManagerOrdersPage() {
     setDetailOpen(true);
   };
 
-  const handleApprove = async (record) => {
-    Modal.confirm({
-      title: 'Duyệt đơn hàng',
-      icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-      content: `Xác nhận duyệt đơn ${record.order_code}?`,
-      okText: 'Duyệt đơn',
-      cancelText: 'Hủy',
-      async onOk() {
-        await managerOrderService.approve(record.id);
-        message.success('Đã duyệt đơn hàng');
-        fetchOrders(pagination.current);
-      },
-    });
-  };
-
-  const handleReject = async (record) => {
-    let reason = '';
-    const modal = Modal.confirm({
-      title: 'Từ chối đơn hàng',
-      icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
-      content: (
-        <div>
-          <Text>Vui lòng nhập lý do từ chối (không bắt buộc):</Text>
-          <textarea
-            style={{ width: '100%', marginTop: 8 }}
-            rows={3}
-            onChange={(e) => {
-              reason = e.target.value;
-            }}
-          />
-        </div>
-      ),
-      okText: 'Từ chối đơn',
-      cancelText: 'Hủy',
-      async onOk() {
-        modal.update({ okButtonProps: { loading: true } });
-        try {
-          await managerOrderService.reject(record.id, { cancel_reason: reason || null });
-          message.success('Đã từ chối đơn hàng');
-          fetchOrders(pagination.current);
-        } finally {
-          modal.update({ okButtonProps: { loading: false } });
-        }
-      },
-    });
-  };
-
   const columns = [
     {
-      title: 'Mã đơn',
-      dataIndex: 'order_code',
-      key: 'order_code',
+      title: "Mã đơn",
+      dataIndex: "order_code",
+      key: "order_code",
       width: 140,
       render: (code) => <Tag color="geekblue">{code}</Tag>,
     },
     {
-      title: 'Cửa hàng',
-      key: 'store',
+      title: "Cửa hàng",
+      key: "store",
       render: (_, r) =>
         r.store ? (
           <span>
-            <Tag color="geekblue" style={{ marginRight: 4 }}>{r.store.code}</Tag>
+            <Tag color="geekblue" style={{ marginRight: 4 }}>
+              {r.store.code}
+            </Tag>
             {r.store.name}
           </span>
         ) : (
@@ -148,76 +82,51 @@ export default function ManagerOrdersPage() {
         ),
     },
     {
-      title: 'Thời gian tạo',
-      dataIndex: 'order_date',
-      key: 'order_date',
+      title: "Thời gian tạo",
+      dataIndex: "order_date",
+      key: "order_date",
       width: 180,
-      render: (v) =>
-        v ? new Date(v).toLocaleString('vi-VN') : '—',
+      render: (v) => (v ? new Date(v).toLocaleString("vi-VN") : "—"),
     },
     {
-      title: 'Ghi chú',
-      dataIndex: 'note',
-      key: 'note',
+      title: "Ghi chú",
+      dataIndex: "note",
+      key: "note",
       ellipsis: true,
       render: (v) => (v ? v : <Text type="secondary">Không có</Text>),
     },
     {
-      title: 'Số mặt hàng',
-      key: 'items_count',
+      title: "Số mặt hàng",
+      key: "items_count",
       width: 120,
-      align: 'center',
+      align: "center",
       render: (_, r) => (
-        <Badge count={r.items?.length || 0} style={{ backgroundColor: '#1890ff' }} />
+        <Badge
+          count={r.items?.length || 0}
+          style={{ backgroundColor: "#1890ff" }}
+        />
       ),
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 130,
-      render: (status) => (
-        <Tag color={STATUS_COLORS[status] || 'default'}>
-          {STATUS_LABELS[status] || status}
-        </Tag>
-      ),
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 160,
+      render: (status) => <OrderStatusBadge status={status} />,
     },
     {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 220,
-      render: (_, record) => {
-        const isPending = record.status === 'PENDING';
-        return (
-          <Space>
-            <Button
-              size="small"
-              icon={<FileSearchOutlined />}
-              onClick={() => openDetail(record)}
-            >
-              Xem
-            </Button>
-            <Button
-              size="small"
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              disabled={!isPending}
-              onClick={() => handleApprove(record)}
-            >
-              Duyệt
-            </Button>
-            <Button
-              size="small"
-              danger
-              icon={<CloseCircleOutlined />}
-              disabled={!isPending}
-              onClick={() => handleReject(record)}
-            >
-              Từ chối
-            </Button>
-          </Space>
-        );
-      },
+      title: "Thao tác",
+      key: "actions",
+      width: 100,
+      render: (_, record) => (
+        <Button
+          size="small"
+          icon={<FileSearchOutlined />}
+          onClick={() => openDetail(record)}
+        >
+          Xem
+        </Button>
+      ),
     },
   ];
 
@@ -231,20 +140,24 @@ export default function ManagerOrdersPage() {
         variant="borderless"
         style={{
           borderRadius: 10,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-          border: '1px solid #f0f0f0',
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          border: "1px solid #f0f0f0",
           marginBottom: 16,
         }}
         bodyStyle={{ padding: 18 }}
       >
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <Space style={{ width: "100%", justifyContent: "space-between" }}>
           <Space direction="vertical" size={2}>
-            <Text strong>Quản lý phê duyệt đơn hàng</Text>
+            <Text strong>Theo dõi đơn từ cửa hàng</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Xem, duyệt hoặc từ chối các đơn đặt hàng do các cửa hàng gửi lên.
+              Chỉ xem trạng thái; xác nhận đơn do Điều phối cung ứng (SUBMITTED
+              → CONFIRMED).
             </Text>
           </Space>
-          <Button icon={<ReloadOutlined />} onClick={() => fetchOrders(pagination.current)}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => fetchOrders(pagination.current)}
+          >
             Làm mới
           </Button>
         </Space>
@@ -254,8 +167,8 @@ export default function ManagerOrdersPage() {
         variant="borderless"
         style={{
           borderRadius: 10,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-          border: '1px solid #f0f0f0',
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          border: "1px solid #f0f0f0",
         }}
         bodyStyle={{ padding: 0 }}
       >
@@ -266,9 +179,7 @@ export default function ManagerOrdersPage() {
           loading={loading}
           size="middle"
           locale={{
-            emptyText: (
-              <Empty description="Chưa có đơn hàng nào từ cửa hàng" />
-            ),
+            emptyText: <Empty description="Chưa có đơn hàng nào từ cửa hàng" />,
           }}
           pagination={{
             ...pagination,
@@ -283,25 +194,37 @@ export default function ManagerOrdersPage() {
         footer={null}
         onCancel={() => setDetailOpen(false)}
         width={720}
-        title={selected ? `Chi tiết đơn ${selected.order_code}` : 'Chi tiết đơn hàng'}
+        title={
+          selected ? `Chi tiết đơn ${selected.order_code}` : "Chi tiết đơn hàng"
+        }
       >
         {selected ? (
           <>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Card size="small" bordered={false} style={{ background: '#fafafa', borderRadius: 8 }}>
+            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+              <Card
+                size="small"
+                bordered={false}
+                style={{ background: "#fafafa", borderRadius: 8 }}
+              >
                 <Space direction="vertical" size={4}>
                   <Text>
-                    <strong>Cửa hàng:</strong>{' '}
-                    {selected.store ? `${selected.store.code} - ${selected.store.name}` : '—'}
+                    <strong>Cửa hàng:</strong>{" "}
+                    {selected.store
+                      ? `${selected.store.code} - ${selected.store.name}`
+                      : "—"}
                   </Text>
                   <Text>
-                    <strong>Thời gian tạo:</strong>{' '}
+                    <strong>Trạng thái:</strong>{" "}
+                    <OrderStatusBadge status={selected.status} />
+                  </Text>
+                  <Text>
+                    <strong>Thời gian tạo:</strong>{" "}
                     {selected.order_date
-                      ? new Date(selected.order_date).toLocaleString('vi-VN')
-                      : '—'}
+                      ? new Date(selected.order_date).toLocaleString("vi-VN")
+                      : "—"}
                   </Text>
                   <Text>
-                    <strong>Ghi chú:</strong>{' '}
+                    <strong>Ghi chú:</strong>{" "}
                     {selected.note || <Text type="secondary">Không có</Text>}
                   </Text>
                 </Space>
@@ -313,33 +236,38 @@ export default function ManagerOrdersPage() {
                   dataSource={selected.items || []}
                   size="small"
                   pagination={false}
-                  locale={{ emptyText: <Empty description="Chưa có mặt hàng" /> }}
+                  locale={{
+                    emptyText: <Empty description="Chưa có mặt hàng" />,
+                  }}
                   columns={[
                     {
-                      title: 'Mã hàng',
-                      key: 'code',
+                      title: "Mã hàng",
+                      key: "code",
                       width: 120,
                       render: (_, r) =>
-                        r.item ? <Tag color="geekblue">{r.item.code}</Tag> : '—',
+                        r.item ? (
+                          <Tag color="geekblue">{r.item.code}</Tag>
+                        ) : (
+                          "—"
+                        ),
                     },
                     {
-                      title: 'Tên hàng',
-                      key: 'name',
-                      render: (_, r) =>
-                        r.item ? r.item.name : '—',
+                      title: "Tên hàng",
+                      key: "name",
+                      render: (_, r) => (r.item ? r.item.name : "—"),
                     },
                     {
-                      title: 'Số lượng đặt',
-                      dataIndex: 'ordered_quantity',
-                      key: 'ordered_quantity',
-                      align: 'right',
+                      title: "Số lượng đặt",
+                      dataIndex: "ordered_quantity",
+                      key: "ordered_quantity",
+                      align: "right",
                       render: (v, r) =>
-                        v != null ? `${Number(v).toFixed(3)} ${r.unit}` : '—',
+                        v != null ? `${Number(v).toFixed(3)} ${r.unit}` : "—",
                     },
                     {
-                      title: 'Ghi chú dòng',
-                      dataIndex: 'note',
-                      key: 'note',
+                      title: "Ghi chú dòng",
+                      dataIndex: "note",
+                      key: "note",
                       ellipsis: true,
                     },
                   ]}
@@ -354,4 +282,3 @@ export default function ManagerOrdersPage() {
     </>
   );
 }
-

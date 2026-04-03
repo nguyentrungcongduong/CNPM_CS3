@@ -18,7 +18,10 @@ use App\Http\Controllers\Api\KitchenOrderController;
 use App\Http\Controllers\Api\KitchenProductionController;
 use App\Http\Controllers\Api\KitchenBatchController;
 use App\Http\Controllers\Api\ManagerReportController;
+use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\DevController;
+use App\Http\Controllers\Api\StoreDashboardController;
+use App\Http\Controllers\Api\UnitController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -32,9 +35,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/push-token', [AuthController::class, 'registerPushToken']);
     Route::delete('/push-token', [AuthController::class, 'removePushToken']);
 
-    // ---- Admin Routes ----
-    Route::prefix('admin')->group(function () {
+    // ---- Admin Routes (ADMIN only) ----
+    Route::middleware(['role.admin'])->prefix('admin')->group(function () {
+        // Overview dashboard for Admin
+        Route::get('/overview', [AdminReportController::class, 'overview']);
+
         Route::get('/roles', [RoleController::class, 'index']);
+        Route::apiResource('/units', UnitController::class);
         Route::get('/stores/list', [StoreController::class, 'list']);
         Route::apiResource('/stores', StoreController::class);
         Route::apiResource('/users', UserController::class);
@@ -53,19 +60,26 @@ Route::middleware('auth:sanctum')->group(function () {
         // Quản lý hàng hóa (Items)
         Route::apiResource('/items', ItemController::class);
 
+        // Công thức – cho Manager dùng cùng logic với RecipeController
+        Route::get('/recipes', [RecipeController::class, 'index']);
+        Route::post('/recipes', [RecipeController::class, 'store']);
+        Route::put('/recipes/{id}', [RecipeController::class, 'update']);
+        Route::delete('/recipes/{id}', [RecipeController::class, 'destroy']);
+
         // Tồn kho Bếp Trung Tâm
         Route::get('/inventory', [ManagerInventoryController::class, 'index']);
         Route::get('/inventory/transactions', [ManagerInventoryController::class, 'transactions']);
+
+        // Danh mục đơn vị tính (read-only cho manager)
+        Route::get('/units', [UnitController::class, 'index']);
 
         // Quản lý Lô hàng (Batch)
         Route::get('/batches', [\App\Http\Controllers\Api\BatchController::class, 'index']);
         Route::post('/batches', [\App\Http\Controllers\Api\BatchController::class, 'store']);
         Route::get('/batches/{batch_code}', [\App\Http\Controllers\Api\BatchController::class, 'show']);
 
-        // Quản lý đơn đặt hàng từ cửa hàng (legacy approve/reject giữ lại)
+        // Đơn từ cửa hàng: chỉ xem — xác nhận do Điều phối (SUBMITTED → CONFIRMED)
         Route::get('/orders', [ManagerOrderController::class, 'index']);
-        Route::patch('/orders/{id}/approve', [ManagerOrderController::class, 'approve']);
-        Route::patch('/orders/{id}/reject', [ManagerOrderController::class, 'reject']);
     });
 
     // ---- Supply Coordinator Routes ----
@@ -117,6 +131,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---- Store Routes ----
     Route::prefix('store')->group(function () {
+        // Store dashboard for mobile home
+        Route::get('/dashboard', [StoreDashboardController::class, 'dashboard']);
+
         // Tồn kho của một cửa hàng
         Route::get('/inventory/me', [StoreInventoryController::class, 'myInventory']);
         Route::get('/inventory/{store_id}', [StoreInventoryController::class, 'show']);

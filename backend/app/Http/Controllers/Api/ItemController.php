@@ -15,6 +15,8 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
+        // Master catalog is chain-wide — never scope by user's store.
+        // `store_id` (if sent by clients) is intentionally ignored.
         $query = Item::query();
 
         // Search by name or code
@@ -22,7 +24,7 @@ class ItemController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%$search%")
-                  ->orWhere('code', 'like', "%$search%");
+                    ->orWhere('code', 'like', "%$search%");
             });
         }
 
@@ -105,14 +107,14 @@ class ItemController extends Controller
     public function destroy($id)
     {
         $item = Item::findOrFail($id);
-        
+
         // Kiểm tra xem hàng hóa đang được sử dụng chưa
         if ($item->inventories()->exists()) {
             throw ValidationException::withMessages([
                 'message' => 'Không thể xóa — hàng đang có trong tồn kho'
             ]);
         }
-        
+
         if ($item->orderItems()->exists()) {
             throw ValidationException::withMessages([
                 'message' => 'Không thể xóa — hàng đang được sử dụng trong đơn hàng'

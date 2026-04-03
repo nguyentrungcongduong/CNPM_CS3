@@ -24,7 +24,7 @@ class KitchenProductionController extends Controller
         $user = $request->user();
         $roleCode = $user?->role?->code;
 
-        if (!in_array($roleCode, ['KITCHEN_STAFF', 'CENTRAL_KITCHEN_STAFF', 'ADMIN'])) {
+        if (!in_array($roleCode, ['KITCHEN_STAFF', 'ADMIN'], true)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc Admin)',
@@ -100,7 +100,7 @@ class KitchenProductionController extends Controller
                 })->values()->toArray();
             } elseif (!$request->items) {
                 $aggregatedData = $this->productionService->aggregateOrders($date);
-                $itemsToProduce = array_map(function($agg) {
+                $itemsToProduce = array_map(function ($agg) {
                     return [
                         'item_id' => $agg['item']->id,
                         'quantity' => $agg['total_quantity'],
@@ -157,7 +157,6 @@ class KitchenProductionController extends Controller
                 'message' => 'Tạo kế hoạch sản xuất thành công.',
                 'data' => $plan->load(['items.item', 'orders.store'])
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -175,7 +174,7 @@ class KitchenProductionController extends Controller
         $this->ensureKitchenOrAdmin(request());
 
         $plan = ProductionPlan::with('items')->findOrFail($id);
-        
+
         $itemsToProduce = [];
         foreach ($plan->items as $item) {
             $itemsToProduce[] = [

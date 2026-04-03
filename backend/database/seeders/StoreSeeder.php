@@ -32,8 +32,8 @@ class StoreSeeder extends Seeder
             ],
             [
                 'code' => 'STORE-C',
-                'name' => 'Store C - Thủ Đức',
-                'address' => '88 Phạm Văn Đồng, TP.Thủ Đức',
+                'name' => 'Store C - Quận 7',
+                'address' => '99 Nguyễn Văn Linh, Quận 7, TP.HCM',
                 'phone' => '02834567890',
                 'manager_name' => 'Lê Văn C',
                 'status' => 'ACTIVE',

@@ -8,10 +8,11 @@ use Illuminate\Http\Request;
 
 class ManagerOrderController extends Controller
 {
-    protected function ensureManager(Request $request): void
+    protected function ensureManagerOrAdmin(Request $request): void
     {
         $user = $request->user();
-        if (!$user || !$user->role || $user->role->code !== 'MANAGER') {
+        $code = $user?->role?->code;
+        if (!in_array($code, ['MANAGER', 'ADMIN'], true)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền truy cập chức năng này',
@@ -21,9 +22,9 @@ class ManagerOrderController extends Controller
 
     public function index(Request $request)
     {
-        $this->ensureManager($request);
+        $this->ensureManagerOrAdmin($request);
 
-        $query = Order::with(['store', 'items.item', 'creator', 'approver']);
+        $query = Order::with(['store', 'items.item', 'creator', 'approver', 'confirmedBy']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -43,58 +44,4 @@ class ManagerOrderController extends Controller
             'data' => $orders,
         ]);
     }
-
-    public function approve(Request $request, int $id)
-    {
-        $this->ensureManager($request);
-
-        $order = Order::with('items')->findOrFail($id);
-
-        if ($order->status !== 'PENDING') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể duyệt đơn ở trạng thái PENDING',
-            ], 422);
-        }
-
-        $order->status = 'APPROVED';
-        $order->approved_by = $request->user()->id;
-        $order->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã duyệt đơn hàng thành công',
-            'data' => $order->fresh(['store', 'items.item', 'creator', 'approver']),
-        ]);
-    }
-
-    public function reject(Request $request, int $id)
-    {
-        $this->ensureManager($request);
-
-        $order = Order::with('items')->findOrFail($id);
-
-        if ($order->status !== 'PENDING') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Chỉ có thể từ chối đơn ở trạng thái PENDING',
-            ], 422);
-        }
-
-        $validated = $request->validate([
-            'cancel_reason' => 'nullable|string|max:1000',
-        ]);
-
-        $order->status = 'REJECTED';
-        $order->approved_by = $request->user()->id;
-        $order->cancel_reason = $validated['cancel_reason'] ?? null;
-        $order->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã từ chối đơn hàng',
-            'data' => $order->fresh(['store', 'items.item', 'creator', 'approver']),
-        ]);
-    }
 }
-

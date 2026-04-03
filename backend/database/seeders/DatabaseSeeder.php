@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             StoreSeeder::class,
             WarehouseSeeder::class,
             ItemSeeder::class,
+            UnitSeeder::class,
             UserSeeder::class,
             BatchSeeder::class,
             OrderSeeder::class,

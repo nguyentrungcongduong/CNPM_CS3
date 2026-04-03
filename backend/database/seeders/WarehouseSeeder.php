@@ -12,31 +12,10 @@ class WarehouseSeeder extends Seeder
     {
         $warehouses = [
             [
-                'code' => 'KITCHEN-01',
-                'name' => 'Bếp Trung Tâm Sài Gòn',
+                'code' => 'KITCHEN-BD',
+                'name' => 'Bếp Trung Tâm Bình Dương',
                 'type' => 'KITCHEN',
-                'address' => '123 Nguyễn Văn A, Quận 1, TP.HCM',
-                'status' => 'ACTIVE',
-            ],
-            [
-                'code' => 'KITCHEN-02',
-                'name' => 'Bếp Trung Tâm Hà Nội',
-                'type' => 'KITCHEN',
-                'address' => '456 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội',
-                'status' => 'ACTIVE',
-            ],
-            [
-                'code' => 'KITCHEN-03',
-                'name' => 'Bếp Trung Tâm Đà Nẵng',
-                'type' => 'KITCHEN',
-                'address' => '789 Nguyễn Văn Linh, Hải Châu, Đà Nẵng',
-                'status' => 'ACTIVE',
-            ],
-            [
-                'code' => 'KITCHEN-04',
-                'name' => 'Bếp Trung Tâm Cần Thơ',
-                'type' => 'KITCHEN',
-                'address' => '321 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ',
+                'address' => 'Khu VSIP I, Thuận An, Bình Dương',
                 'status' => 'ACTIVE',
             ],
         ];

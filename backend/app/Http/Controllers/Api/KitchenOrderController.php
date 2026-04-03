@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  * KitchenOrderController
  *
  * Handles Kitchen Staff actions on orders during the production lifecycle.
- * Role: CENTRAL_KITCHEN_STAFF (also accessible by MANAGER / ADMIN)
+ * Role: KITCHEN_STAFF (also accessible by MANAGER / ADMIN)
  *
  * Routes:
  *   GET  /api/kitchen/orders                    – list orders relevant to kitchen
@@ -41,7 +41,7 @@ class KitchenOrderController extends Controller
         $user = $request->user();
         $roleCode = $user?->role?->code;
 
-        if (!in_array($roleCode, ['CENTRAL_KITCHEN_STAFF','KITCHEN_STAFF', 'SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN'])) {
+        if (!in_array($roleCode, ['KITCHEN_STAFF', 'SUPPLY_COORDINATOR', 'MANAGER', 'ADMIN'], true)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc cao hơn)',
@@ -66,7 +66,7 @@ class KitchenOrderController extends Controller
             $date = $request->date;
             $query->where(function ($q) use ($date) {
                 $q->whereDate('required_date', $date)
-                  ->orWhereDate('order_date', $date);
+                    ->orWhereDate('order_date', $date);
             });
         }
 
