@@ -35,6 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/push-token', [AuthController::class, 'registerPushToken']);
     Route::delete('/push-token', [AuthController::class, 'removePushToken']);
 
+    // Common access for admin routes that other roles need (e.g. dropdown lists)
+    Route::prefix('admin')->group(function () {
+        Route::get('/stores/list', [App\Http\Controllers\Api\StoreController::class, 'list']);
+    });
+
     // ---- Admin Routes (ADMIN only) ----
     Route::middleware(['role.admin'])->prefix('admin')->group(function () {
         // Overview dashboard for Admin
@@ -42,7 +47,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/roles', [RoleController::class, 'index']);
         Route::apiResource('/units', UnitController::class);
-        Route::get('/stores/list', [StoreController::class, 'list']);
         Route::apiResource('/stores', StoreController::class);
         Route::apiResource('/users', UserController::class);
         Route::apiResource('/kitchens', KitchenController::class);

@@ -78,7 +78,7 @@ export default function BatchConfirmationScreen() {
         Alert.alert('Lỗi', response.message || 'Không thể nhận hàng');
       }
     } catch (error: any) {
-      console.error('[Confirm] Error:', error);
+      console.log('[Confirm] Error:', error);
       Alert.alert(
         'Lỗi nhận hàng',
         error?.response?.data?.message || 'Có lỗi xảy ra khi xác nhận nhận hàng'

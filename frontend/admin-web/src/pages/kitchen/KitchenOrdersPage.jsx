@@ -300,6 +300,27 @@ export default function KitchenOrdersPage() {
     });
   };
 
+  const handleCreateSinglePlan = (order) => {
+    Modal.confirm({
+      title: `Chuyển đơn ${order.order_code} vào sản xuất?`,
+      content: `Hệ thống sẽ tạo 1 kế hoạch sản xuất TÁCH BIỆT chỉ dành riêng cho đơn hàng này.`,
+      okText: 'Tạo kế hoạch',
+      cancelText: 'Hủy',
+      async onOk() {
+        try {
+          await createProductionPlan({
+            plan_date: dayjs().format('YYYY-MM-DD'),
+            order_id: order.id
+          });
+          message.success(`Đã đưa đơn ${order.order_code} vào sản xuất!`);
+          fetchOrders(pagination.current);
+        } catch (e) {
+          message.error(e?.response?.data?.message || 'Không thể tạo kế hoạch sản xuất');
+        }
+      }
+    });
+  };
+
   const columns = [
     {
       title: 'Mã đơn',
@@ -350,11 +371,18 @@ export default function KitchenOrdersPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 120,
+      width: 180,
       render: (_, record) => (
-        <Button size="small" icon={<FileSearchOutlined />} onClick={() => openDetail(record)}>
-          Xem
-        </Button>
+        <Space>
+          <Button size="small" icon={<FileSearchOutlined />} onClick={() => openDetail(record)}>
+            Xem
+          </Button>
+          {record.status === ORDER_STATUS.CONFIRMED && (
+            <Button size="small" type="primary" onClick={() => handleCreateSinglePlan(record)}>
+              Tạo KH
+            </Button>
+          )}
+        </Space>
       ),
     },
   ];

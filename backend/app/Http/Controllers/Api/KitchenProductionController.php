@@ -77,10 +77,10 @@ class KitchenProductionController extends Controller
                 $order = Order::with(['items.item', 'store'])
                     ->findOrFail($request->order_id);
 
-                if ($order->status !== 'APPROVED') {
+                if (!in_array($order->status, ['APPROVED', 'CONFIRMED'])) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Không thể tạo kế hoạch sản xuất: đơn hàng chưa được duyệt (trạng thái hiện tại: '{$order->status}').",
+                        'message' => "Không thể tạo kế hoạch sản xuất: đơn hàng phải ở trạng thái Đã được duyệt (trạng thái hiện tại: '{$order->status}').",
                     ], 422);
                 }
 
@@ -140,14 +140,26 @@ class KitchenProductionController extends Controller
                     ->update([
                         'production_plan_id' => $plan->id,
                         'status' => Order::STATUS_IN_PRODUCTION,
+                        'production_started_at' => now(),
                     ]);
+                
+                $updOrder = Order::with('store')->find($request->order_id);
+                if ($updOrder) {
+                    \App\Jobs\SendOrderNotification::dispatch($updOrder, 'status_changed', Order::STATUS_IN_PRODUCTION);
+                }
             } elseif ($aggregatedData && isset($aggregatedData['orders'])) {
                 $orderIds = collect($aggregatedData['orders'])->pluck('id')->toArray();
                 Order::whereIn('id', $orderIds)
                     ->update([
                         'production_plan_id' => $plan->id,
                         'status' => Order::STATUS_IN_PRODUCTION,
+                        'production_started_at' => now(),
                     ]);
+
+                $updOrders = Order::with('store')->whereIn('id', $orderIds)->get();
+                foreach ($updOrders as $o) {
+                    \App\Jobs\SendOrderNotification::dispatch($o, 'status_changed', Order::STATUS_IN_PRODUCTION);
+                }
             }
 
             DB::commit();

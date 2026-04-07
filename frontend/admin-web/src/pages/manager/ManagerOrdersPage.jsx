@@ -35,12 +35,12 @@ export default function ManagerOrdersPage() {
           page,
           per_page: pagination.pageSize,
         });
-        const page = res?.data ?? res;
-        setOrders(page?.data ?? []);
+        const pageData = res?.data ?? res;
+        setOrders(pageData?.data ?? []);
         setPagination((prev) => ({
           ...prev,
-          current: page?.current_page ?? 1,
-          total: page?.total ?? 0,
+          current: pageData?.current_page ?? 1,
+          total: pageData?.total ?? 0,
         }));
       } finally {
         setLoading(false);
