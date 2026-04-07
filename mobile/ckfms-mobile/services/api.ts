@@ -3,7 +3,10 @@ import { tokenStorage } from './token.storage';
 
 // ===== CẤU HÌNH BASE URL =====
 // Dùng biến môi trường từ file `.env` (không đưa lên Git) cho bảo mật
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+// IP máy tính: 10.195.242.159 (4G) - Port 8001
+const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://10.195.242.159:8001/api').trim();
+
+console.log('[API] Base URL:', BASE_URL);
 
 const api = axios.create({
     baseURL: BASE_URL,

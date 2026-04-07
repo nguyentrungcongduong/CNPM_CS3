@@ -22,23 +22,35 @@ export const authService = {
      * Tự động lưu token vào SecureStore / LocalStorage sau khi thành công
      */
     async login(credentials: LoginCredentials): Promise<LoginResponse> {
-        const response = await api.post<{ access_token: string; user: any }>(
-            '/login',
-            credentials
-        );
-        const token = response.data.access_token;
-        const user = response.data.user;
+        console.log('[Auth] Đang đăng nhập với:', credentials.username);
+        console.log('[Auth] API URL:', api.defaults.baseURL);
+        
+        try {
+            const response = await api.post<{ access_token: string; user: any }>(
+                '/login',
+                credentials
+            );
+            console.log('[Auth] Login thành công:', response.data);
+            
+            const token = response.data.access_token;
+            const user = response.data.user;
 
-        await tokenStorage.saveToken(token);
+            await tokenStorage.saveToken(token);
 
-        return {
-            token: token,
-            user: {
-                id: user.id,
-                username: user.username,
-                role: user.role?.code || 'GUEST',
-            }
-        };
+            return {
+                token: token,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    role: user.role?.code || 'GUEST',
+                }
+            };
+        } catch (error: any) {
+            console.error('[Auth] Login lỗi:', error.message);
+            console.error('[Auth] Response:', error.response?.data);
+            console.error('[Auth] Status:', error.response?.status);
+            throw error;
+        }
     },
 
     /**
@@ -59,7 +71,7 @@ export const authService = {
      * Lấy thông tin user đang đăng nhập
      */
     async getMe() {
-        const response = await api.get('/users/me');
-        return response.data.data;
+        const response = await api.get('/me');
+        return response.data;
     },
 };

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "145660475026",
+    "project_id": "android-c1d90",
+    "storage_bucket": "android-c1d90.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145660475026:android:85e710db2cec37d38f184b",
+        "android_client_info": {
+          "package_name": "com.ckfms.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdM6PlrQyUqCXXvwRzJ11kQRBnyWNB9-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

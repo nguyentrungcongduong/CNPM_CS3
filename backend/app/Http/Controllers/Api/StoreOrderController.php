@@ -81,7 +81,7 @@ class StoreOrderController extends Controller
                 'store_id' => $user->store_id,
                 'warehouse_id' => $validated['warehouse_id'] ?? null,
                 'created_by' => $user->id,
-                'status' => 'PENDING',
+                'status' => Order::STATUS_DRAFT,
                 'order_date' => now(),
                 'required_date' => $validated['required_date'],
                 'note' => $validated['note'] ?? null,
@@ -182,7 +182,7 @@ class StoreOrderController extends Controller
             'statusHistories' => function ($query) {
                 $query->orderBy('created_at', 'asc');
             },
-            'statusHistories.changedBy:id,name'
+            'statusHistories.changedBy:id,full_name'
         ])
             ->where('store_id', $user->store_id)
             ->findOrFail($id);

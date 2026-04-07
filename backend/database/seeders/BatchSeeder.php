@@ -14,39 +14,92 @@ class BatchSeeder extends Seeder
 {
     public function run(): void
     {
-        // Đảm bảo có Bếp
+        // Đảm bảo có Bếp Trung Tâm
         $kitchen = Warehouse::where('type', 'KITCHEN')->first();
         if (!$kitchen) {
             $kitchen = Warehouse::create([
-                'code' => 'WH-CK-01',
+                'code' => 'KITCHEN-01',
                 'name' => 'Bếp Trung Tâm Sài Gòn',
                 'type' => 'KITCHEN',
-                'address' => '123 District 1',
+                'address' => '123 Nguyễn Văn A, Quận 1, TP.HCM',
                 'status' => 'ACTIVE'
             ]);
         }
 
-        // Đảm bảo có Item
-        if (Item::count() == 0) {
-            Item::create(['code' => 'ITEM001', 'name' => 'Thịt bò Mỹ', 'type' => 'NGUYÊN LIỆU', 'unit' => 'KG', 'min_stock' => 10, 'status' => 'ACTIVE']);
-            Item::create(['code' => 'ITEM002', 'name' => 'Sữa tươi', 'type' => 'NGUYÊN LIỆU', 'unit' => 'LÍT', 'min_stock' => 20, 'status' => 'ACTIVE']);
-            Item::create(['code' => 'ITEM003', 'name' => 'Bột mì', 'type' => 'NGUYÊN LIỆU', 'unit' => 'KG', 'min_stock' => 15, 'status' => 'ACTIVE']);
-        }
+        // Lấy các sản phẩm chính đã có trong ItemSeeder
+        $items = [
+            Item::where('code', 'ING-CHK-BREAST')->first(), // Ức gà fillet
+            Item::where('code', 'ING-MILK-FRESH')->first(), // Sữa tươi không đường
+            Item::where('code', 'ING-EGG-CHICKEN')->first(), // Trứng gà
+            Item::where('code', 'ING-BUTTER-UNSALTED')->first(), // Bơ lạt
+            Item::where('code', 'ING-FLOUR-WHEAT')->first(), // Bột mì
+            Item::where('code', 'ING-PORK-BELLY')->first(), // Ba rọi heo
+            Item::where('code', 'LIQ-COOKING-OIL')->first(), // Dầu ăn
+        ];
 
-        $items = Item::all();
+        // Tạo 1 batch cố định để scan QR (batch này sẽ có mã cố định để dễ test)
+        $demoItem = $items[0]; // Ức gà fillet
+        $this->createFixedBatch($kitchen, $demoItem);
 
+        // Tạo các batch khác cho các items
         foreach ($items as $index => $item) {
+            if ($index === 0) continue; // Skip demo item đã tạo ở trên
+            
             // Tạo 3 loại lô cho mỗi mặt hàng: Bình thường, Sắp hết hạn, Đã hết hạn
-
+            
             // 1. Lô bình thường (Còn hạn dài)
             $this->createBatch($kitchen, $item, 100, now()->addMonths(6), 'ACTIVE');
 
             // 2. Lô sắp hết hạn (Trong vòng 5 ngày tới)
             $this->createBatch($kitchen, $item, 50, now()->addDays(5), 'ACTIVE');
-
-            // 3. Lô đã hết hạn (Của 10 ngày trước)
-            $this->createBatch($kitchen, $item, 20, now()->subDays(10), 'EXPIRED');
         }
+    }
+
+    private function createFixedBatch($warehouse, $item)
+    {
+        // Batch cố định với mã dễ nhớ để test QR scan
+        $batchCode = 'BAT-DEMO-001-TESTQR';
+        
+        // Xóa batch cũ nếu có để tránh trùng lặp
+        Batch::where('batch_code', $batchCode)->delete();
+
+        $batch = Batch::create([
+            'batch_code' => $batchCode,
+            'item_id' => $item->id,
+            'warehouse_id' => $warehouse->id,
+            'quantity' => 50,
+            'initial_quantity' => 50,
+            'mfg_date' => now()->subDays(10),
+            'expiry_date' => now()->addDays(20),
+            'status' => 'ACTIVE',
+        ]);
+
+        // Cập nhật tồn kho aggregate
+        $inventory = Inventory::firstOrCreate(
+            ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
+            ['quantity_on_hand' => 0, 'quantity_reserved' => 0, 'quantity_available' => 0]
+        );
+
+        $oldVal = $inventory->quantity_on_hand;
+        $inventory->quantity_on_hand += 50;
+        $inventory->quantity_available += 50;
+        $inventory->last_updated_at = now();
+        $inventory->save();
+
+        // Ghi transaction
+        InventoryTransaction::create([
+            'inventory_id' => $inventory->id,
+            'warehouse_id' => $warehouse->id,
+            'item_id' => $item->id,
+            'batch_id' => $batch->id,
+            'reference_type' => 'batch',
+            'reference_id' => $batch->id,
+            'type' => 'IN',
+            'quantity' => 50,
+            'quantity_before' => $oldVal,
+            'quantity_after' => $inventory->quantity_on_hand,
+            'note' => "Batch DEMO để test QR scan - {$item->name}",
+        ]);
     }
 
     private function createBatch($warehouse, $item, $qty, $expiryDate, $status)
@@ -66,8 +119,8 @@ class BatchSeeder extends Seeder
 
         // Cập nhật tồn kho aggregate
         $inventory = Inventory::firstOrCreate(
-        ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
-        ['quantity_on_hand' => 0, 'quantity_reserved' => 0, 'quantity_available' => 0]
+            ['warehouse_id' => $warehouse->id, 'item_id' => $item->id],
+            ['quantity_on_hand' => 0, 'quantity_reserved' => 0, 'quantity_available' => 0]
         );
 
         $oldVal = $inventory->quantity_on_hand;

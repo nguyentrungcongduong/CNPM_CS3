@@ -24,7 +24,7 @@ class KitchenProductionController extends Controller
         $user = $request->user();
         $roleCode = $user?->role?->code;
 
-        if (!in_array($roleCode, ['KITCHEN_STAFF', 'CENTRAL_KITCHEN_STAFF', 'ADMIN'])) {
+        if (!in_array($roleCode, ['KITCHEN_STAFF', 'ADMIN'], true)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền thực hiện hành động này (cần vai trò Kitchen Staff hoặc Admin)',
@@ -77,10 +77,10 @@ class KitchenProductionController extends Controller
                 $order = Order::with(['items.item', 'store'])
                     ->findOrFail($request->order_id);
 
-                if ($order->status !== 'APPROVED') {
+                if (!in_array($order->status, ['APPROVED', 'CONFIRMED'])) {
                     return response()->json([
                         'success' => false,
-                        'message' => "Không thể tạo kế hoạch sản xuất: đơn hàng chưa được duyệt (trạng thái hiện tại: '{$order->status}').",
+                        'message' => "Không thể tạo kế hoạch sản xuất: đơn hàng phải ở trạng thái Đã được duyệt (trạng thái hiện tại: '{$order->status}').",
                     ], 422);
                 }
 
@@ -100,7 +100,7 @@ class KitchenProductionController extends Controller
                 })->values()->toArray();
             } elseif (!$request->items) {
                 $aggregatedData = $this->productionService->aggregateOrders($date);
-                $itemsToProduce = array_map(function($agg) {
+                $itemsToProduce = array_map(function ($agg) {
                     return [
                         'item_id' => $agg['item']->id,
                         'quantity' => $agg['total_quantity'],
@@ -134,12 +134,31 @@ class KitchenProductionController extends Controller
                 ]);
             }
 
-            // Update orders to associate with this production plan
+            // Update orders to associate with this production plan and change status to IN_PRODUCTION
             if ($request->filled('order_id')) {
-                Order::where('id', $request->order_id)->update(['production_plan_id' => $plan->id]);
+                Order::where('id', $request->order_id)
+                    ->update([
+                        'production_plan_id' => $plan->id,
+                        'status' => Order::STATUS_IN_PRODUCTION,
+                        'production_started_at' => now(),
+                    ]);
+                
+                $updOrder = Order::with('store')->find($request->order_id);
+                if ($updOrder) {
+                    \App\Jobs\SendOrderNotification::dispatch($updOrder, 'status_changed', Order::STATUS_IN_PRODUCTION);
+                }
             } elseif ($aggregatedData && isset($aggregatedData['orders'])) {
-                foreach ($aggregatedData['orders'] as $order) {
-                    $order->update(['production_plan_id' => $plan->id]);
+                $orderIds = collect($aggregatedData['orders'])->pluck('id')->toArray();
+                Order::whereIn('id', $orderIds)
+                    ->update([
+                        'production_plan_id' => $plan->id,
+                        'status' => Order::STATUS_IN_PRODUCTION,
+                        'production_started_at' => now(),
+                    ]);
+
+                $updOrders = Order::with('store')->whereIn('id', $orderIds)->get();
+                foreach ($updOrders as $o) {
+                    \App\Jobs\SendOrderNotification::dispatch($o, 'status_changed', Order::STATUS_IN_PRODUCTION);
                 }
             }
 
@@ -150,7 +169,6 @@ class KitchenProductionController extends Controller
                 'message' => 'Tạo kế hoạch sản xuất thành công.',
                 'data' => $plan->load(['items.item', 'orders.store'])
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -168,7 +186,7 @@ class KitchenProductionController extends Controller
         $this->ensureKitchenOrAdmin(request());
 
         $plan = ProductionPlan::with('items')->findOrFail($id);
-        
+
         $itemsToProduce = [];
         foreach ($plan->items as $item) {
             $itemsToProduce[] = [
@@ -230,10 +248,9 @@ class KitchenProductionController extends Controller
                         'APPROVED', // legacy fallback
                     ])
                     ->update([
-                        // No READY_FOR_DELIVERY status in current model; use IN_DELIVERY.
-                        'status' => Order::STATUS_IN_DELIVERY,
+                        // Kitchen hoàn thành → READY, chờ Coordinator lập lịch giao
+                        'status' => Order::STATUS_READY,
                         'ready_at' => now(),
-                        'in_delivery_at' => now(),
                     ]);
             }
         });

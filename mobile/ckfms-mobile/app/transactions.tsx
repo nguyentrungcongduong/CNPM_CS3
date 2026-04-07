@@ -27,7 +27,8 @@ export default function TransactionsScreen() {
         try {
             setLoading(true);
             const meRes = await api.get('/me');
-            const userStoreId = meRes.data?.data?.store_id || meRes.data?.user?.store_id;
+            const userData = meRes.data;
+            const userStoreId = userData?.store_id || userData?.store?.id;
             
             if (!userStoreId) {
                 Alert.alert('Lỗi', 'Tài khoản không được gắn với cửa hàng nào.');

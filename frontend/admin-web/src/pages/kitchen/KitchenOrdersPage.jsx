@@ -14,16 +14,21 @@ import {
   Descriptions,
   Divider,
   DatePicker,
-  Tooltip,
+  Alert,
+  Statistic,
+  Row,
+  Col,
 } from 'antd';
 import {
   FileSearchOutlined,
   ReloadOutlined,
   PlusOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { kitchenOrderService } from '../../api/kitchenOrderService';
 import { OrderStatusBadge, OrderStatusSteps } from '../../components/OrderStatus';
-import { ORDER_STATUS, STATUS_LABELS, ORDER_STEPS } from '../../constants/orderStatus';
+import { ORDER_STATUS } from '../../constants/orderStatus';
 import { createProductionPlan } from '../../api/productionService';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -90,7 +95,7 @@ function OrderDetailDrawer({ open, onClose, order }) {
           {/* Timestamps */}
           {order.confirmed_at && (
             <><Divider style={{ margin: '12px 0' }} />
-              <Descriptions column={2} size="small" title="Mốc thời gian">
+              <Descriptions column={2} size="small" title="Mốc thờii gian">
                 {order.confirmed_at && (
                   <Descriptions.Item label="Xác nhận">
                     {new Date(order.confirmed_at).toLocaleString('vi-VN')}
@@ -175,7 +180,7 @@ export default function KitchenOrdersPage() {
   const [selected, setSelected] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [creatingPlanForId, setCreatingPlanForId] = useState(null);
+  const [creatingPlan, setCreatingPlan] = useState(false);
 
   const fetchOrders = useCallback(async (page = 1) => {
     setLoading(true);
@@ -205,40 +210,114 @@ export default function KitchenOrdersPage() {
     }
   };
 
-  const handleCreatePlan = (record) => {
+  // Tính toán số đơn có thể tạo kế hoạch (CONFIRMED)
+  const confirmedOrders = orders.filter(o => o.status === ORDER_STATUS.CONFIRMED);
+  const canCreateBatchPlan = confirmedOrders.length > 0;
+
+  const handleCreateBatchPlan = () => {
+    if (!canCreateBatchPlan) {
+      message.warning('Không có đơn nào ở trạng thái "Đã xác nhận" để tạo kế hoạch');
+      return;
+    }
+
+    // Tính tổng số lượng từng mặt hàng
+    const itemTotals = {};
+    confirmedOrders.forEach(order => {
+      order.items?.forEach(item => {
+        const itemId = item.item?.id || item.item_id;
+        const itemName = item.item?.name || 'Unknown';
+        const itemCode = item.item?.code || 'Unknown';
+        const qty = Number(item.ordered_quantity || 0);
+        const unit = item.unit || 'unit';
+        
+        if (!itemTotals[itemId]) {
+          itemTotals[itemId] = { name: itemName, code: itemCode, total: 0, unit };
+        }
+        itemTotals[itemId].total += qty;
+      });
+    });
+
+    const itemList = Object.values(itemTotals);
+
     Modal.confirm({
-      title: 'Tạo kế hoạch sản xuất cho đơn này?',
+      title: 'Tạo kế hoạch sản xuất tự động',
+      icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+      width: 600,
       content: (
         <div>
-          <div><Text strong>Mã đơn:</Text> <Tag color="geekblue">{record.order_code}</Tag></div>
-          <div style={{ marginTop: 6 }}>
-            <Text strong>Ngày:</Text>{' '}
-            <Text>{selectedDate ? selectedDate.format('YYYY-MM-DD') : '—'}</Text>
+          <Alert
+            type="info"
+            message={`Ngày: ${selectedDate.format('YYYY-MM-DD')}`}
+            description={`Hệ thống sẽ gom ${confirmedOrders.length} đơn hàng đã xác nhận và tạo 1 kế hoạch sản xuất duy nhất.`}
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Text strong>Tổng hợp nguyên liệu cần sản xuất:</Text>
+          <div style={{ marginTop: 8, maxHeight: 200, overflow: 'auto' }}>
+            {itemList.map((item, idx) => (
+              <div key={idx} style={{ 
+                padding: '8px 12px', 
+                background: '#f6ffed', 
+                border: '1px solid #b7eb8f',
+                borderRadius: 6,
+                marginBottom: 8
+              }}>
+                <Tag color="geekblue">{item.code}</Tag>
+                <Text strong>{item.name}</Text>
+                <div style={{ marginTop: 4 }}>
+                  <Text type="success" strong style={{ fontSize: 16 }}>
+                    {item.total.toFixed(3)} {item.unit}
+                  </Text>
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ marginTop: 6 }}>
+
+          <div style={{ marginTop: 16, padding: 12, background: '#e6f7ff', borderRadius: 6 }}>
             <Text type="secondary">
-              Kế hoạch sẽ chỉ lấy sản phẩm từ <Text strong>1 đơn</Text> (không tự gom tất cả đơn trong ngày).
+              💡 <Text strong>Lưu ý:</Text> Tất cả đơn trên sẽ được chuyển sang trạng thái "Đang sản xuất" sau khi tạo kế hoạch.
             </Text>
           </div>
         </div>
       ),
       okText: 'Tạo kế hoạch',
       cancelText: 'Hủy',
-      async onOk() {
-        setCreatingPlanForId(record.id);
+        async onOk() {
+        setCreatingPlan(true);
         try {
+          // KHÔNG truyền order_id → Backend tự động gom tất cả đơn CONFIRMED trong ngày
           await createProductionPlan({
-            plan_date: selectedDate?.format('YYYY-MM-DD'),
-            order_id: record.id,
+            plan_date: selectedDate.format('YYYY-MM-DD'),
           });
-          message.success('Đã tạo kế hoạch sản xuất. Chuyển sang màn hình Kế hoạch sản xuất…');
+          message.success(`Đã tạo kế hoạch sản xuất tổng hợp cho ${confirmedOrders.length} đơn hàng`);
           navigate('/kitchen/production');
         } catch (e) {
           message.error(e?.response?.data?.message || 'Không thể tạo kế hoạch sản xuất');
         } finally {
-          setCreatingPlanForId(null);
+          setCreatingPlan(false);
         }
       },
+    });
+  };
+
+  const handleCreateSinglePlan = (order) => {
+    Modal.confirm({
+      title: `Chuyển đơn ${order.order_code} vào sản xuất?`,
+      content: `Hệ thống sẽ tạo 1 kế hoạch sản xuất TÁCH BIỆT chỉ dành riêng cho đơn hàng này.`,
+      okText: 'Tạo kế hoạch',
+      cancelText: 'Hủy',
+      async onOk() {
+        try {
+          await createProductionPlan({
+            plan_date: dayjs().format('YYYY-MM-DD'),
+            order_id: order.id
+          });
+          message.success(`Đã đưa đơn ${order.order_code} vào sản xuất!`);
+          fetchOrders(pagination.current);
+        } catch (e) {
+          message.error(e?.response?.data?.message || 'Không thể tạo kế hoạch sản xuất');
+        }
+      }
     });
   };
 
@@ -292,29 +371,19 @@ export default function KitchenOrdersPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 260,
-      render: (_, record) => {
-        const canCreatePlan = record.status === 'APPROVED';
-        return (
-          <Space>
-            <Button size="small" icon={<FileSearchOutlined />} onClick={() => openDetail(record)}>
-              Xem
+      width: 180,
+      render: (_, record) => (
+        <Space>
+          <Button size="small" icon={<FileSearchOutlined />} onClick={() => openDetail(record)}>
+            Xem
+          </Button>
+          {record.status === ORDER_STATUS.CONFIRMED && (
+            <Button size="small" type="primary" onClick={() => handleCreateSinglePlan(record)}>
+              Tạo KH
             </Button>
-            <Tooltip title={canCreatePlan ? null : 'Đơn chưa được duyệt'}>
-              <Button
-                size="small"
-                type="primary"
-                icon={<PlusOutlined />}
-                loading={creatingPlanForId === record.id}
-                disabled={!canCreatePlan}
-                onClick={() => handleCreatePlan(record)}
-              >
-                Tạo kế hoạch
-              </Button>
-            </Tooltip>
-          </Space>
-        );
-      },
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -322,32 +391,84 @@ export default function KitchenOrdersPage() {
     <>
       <Title level={3} style={{ marginBottom: 16 }}>Quản lý sản xuất – Bếp Trung Tâm</Title>
 
+      {/* Stats & Actions */}
       <Card
         variant="borderless"
         style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 16 }}
         bodyStyle={{ padding: 18 }}
       >
-        <Space style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <Space direction="vertical" size={2}>
-            <Text strong>Đơn hàng theo ngày</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Chọn ngày để xem danh sách đơn. Bếp sẽ <Text strong>chọn từng đơn</Text> để tạo kế hoạch sản xuất.
-            </Text>
-          </Space>
-          <Space>
-            <DatePicker
-              value={selectedDate}
-              onChange={(d) => setSelectedDate(d || dayjs())}
-              format="YYYY-MM-DD"
-              allowClear={false}
+        <Row gutter={16} align="middle">
+          <Col flex="auto">
+            <Space direction="vertical" size={2}>
+              <Text strong>Đơn hàng theo ngày</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Xem tất cả đơn hàng và tạo kế hoạch sản xuất tổng hợp cho nhiều đơn cùng ngày.
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Space>
+              <DatePicker
+                value={selectedDate}
+                onChange={(d) => setSelectedDate(d || dayjs())}
+                format="YYYY-MM-DD"
+                allowClear={false}
+              />
+              <Button icon={<ReloadOutlined />} onClick={() => fetchOrders(pagination.current)}>
+                Làm mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+
+        {/* Stats & Create Plan Button */}
+        <div style={{ marginTop: 16, padding: 16, background: '#f6ffed', borderRadius: 8, border: '1px solid #b7eb8f' }}>
+          <Row gutter={16} align="middle">
+            <Col flex="auto">
+              <Space size="large">
+                <Statistic 
+                  title="Tổng đơn" 
+                  value={orders.length} 
+                  valueStyle={{ color: '#1890ff' }}
+                />
+                <Statistic 
+                  title="Đã xác nhận" 
+                  value={confirmedOrders.length} 
+                  valueStyle={{ color: '#52c41a' }}
+                />
+                <Statistic 
+                  title="Đang sản xuất" 
+                  value={orders.filter(o => o.status === ORDER_STATUS.IN_PRODUCTION).length} 
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Space>
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlusOutlined />}
+                loading={creatingPlan}
+                disabled={!canCreateBatchPlan}
+                onClick={handleCreateBatchPlan}
+              >
+                Tạo kế hoạch tự động
+              </Button>
+            </Col>
+          </Row>
+          {!canCreateBatchPlan && (
+            <Alert
+              type="warning"
+              showIcon
+              message="Không thể tạo kế hoạch"
+              description="Cần ít nhất 1 đơn hàng ở trạng thái 'Đã xác nhận' để tạo kế hoạch sản xuất."
+              style={{ marginTop: 12 }}
             />
-            <Button icon={<ReloadOutlined />} onClick={() => fetchOrders(pagination.current)}>
-              Làm mới
-            </Button>
-          </Space>
-        </Space>
+          )}
+        </div>
       </Card>
 
+      {/* Orders Table */}
       <Card
         variant="borderless"
         style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}

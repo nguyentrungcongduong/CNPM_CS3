@@ -34,11 +34,10 @@ class ManagerInventoryController extends Controller
         }
 
         if ($request->boolean('low_stock')) {
-            $query->whereHas('item', function ($q) {
-                $q->whereNotNull('min_stock');
-            })->where('quantity_available', '<=',
-                DB::raw('(SELECT min_stock FROM items WHERE items.id = inventory.item_id)')
-            );
+            $query->whereHas('item', function ($q) use ($warehouseIds) {
+                $q->whereNotNull('min_stock')
+                  ->whereRaw("(SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE batches.item_id = items.id AND batches.status = 'ACTIVE' AND batches.warehouse_id IN (" . $warehouseIds->implode(',') . ")) <= items.min_stock");
+            });
         }
 
         $inventory = $query->orderBy('created_at')->paginate($request->get('per_page', 20));

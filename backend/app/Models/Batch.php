@@ -10,11 +10,13 @@ class Batch extends Model
         'batch_code',
         'item_id',
         'warehouse_id',
+        'order_id',
         'quantity',
         'initial_quantity',
         'mfg_date',
         'expiry_date',
         'status',
+        'delivery_status',
     ];
 
     protected $casts = [
@@ -32,6 +34,11 @@ class Batch extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function transactions()

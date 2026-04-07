@@ -43,6 +43,15 @@ export default function TabsLayout() {
                     ),
                 }}
             />
+            <Tabs.Screen
+                name="inventory"
+                options={{
+                    title: 'Tồn kho',
+                    tabBarIcon: ({ color }) => (
+                        <Text style={{ color, fontSize: 20 }}>📦</Text>
+                    ),
+                }}
+            />
         </Tabs>
     );
 }

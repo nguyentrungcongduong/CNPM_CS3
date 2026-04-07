@@ -30,4 +30,9 @@ class Item extends Model
     {
         return $this->hasMany(RecipeItem::class);
     }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }

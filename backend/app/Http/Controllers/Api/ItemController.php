@@ -6,16 +6,43 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
 
 class ItemController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = Item::all();
-        return response()->json($items);
+        // Master catalog is chain-wide — never scope by user's store.
+        // `store_id` (if sent by clients) is intentionally ignored.
+        $query = Item::query();
+
+        // Search by name or code
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                    ->orWhere('code', 'like', "%$search%");
+            });
+        }
+
+        // Filter by type
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $items = $query->orderBy('created_at', 'desc')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
     }
 
     /**
@@ -75,12 +102,31 @@ class ItemController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Use soft delete and check if item is being used.
      */
     public function destroy($id)
     {
         $item = Item::findOrFail($id);
+
+        // Kiểm tra xem hàng hóa đang được sử dụng chưa
+        if ($item->inventories()->exists()) {
+            throw ValidationException::withMessages([
+                'message' => 'Không thể xóa — hàng đang có trong tồn kho'
+            ]);
+        }
+
+        if ($item->orderItems()->exists()) {
+            throw ValidationException::withMessages([
+                'message' => 'Không thể xóa — hàng đang được sử dụng trong đơn hàng'
+            ]);
+        }
+
+        // Soft delete
         $item->delete();
 
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa hàng hóa thành công'
+        ]);
     }
 }
