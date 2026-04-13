@@ -48,7 +48,8 @@ export default function RecipesPage() {
     setLoading(true);
     try {
       const res = await recipeService.getRecipes();
-      setRecipes(res);
+      const data = res.data?.data || res.data || res;
+      setRecipes(Array.isArray(data) ? data : []);
     } catch (e) {
       message.error('Không thể tải danh sách công thức.');
     } finally {
@@ -60,7 +61,9 @@ export default function RecipesPage() {
     setItemsLoading(true);
     try {
       const res = await recipeService.getItems();
-      setItems(res);
+      // Safe fallback tuỳ theo response axios của dự án
+      const data = res.data?.data || res.data || res;
+      setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       message.error('Không thể tải danh sách nguyên liệu.');
     } finally {
@@ -265,8 +268,9 @@ export default function RecipesPage() {
             name="code"
             label="Mã công thức"
             rules={[{ required: true, message: 'Vui lòng nhập mã công thức' }]}
+            extra={<Text type="warning" style={{fontSize: 12}}>Lưu ý: Để Bếp TT tính toán được, Mã công thức này PHẢI trùng khớp 100% với Mã Hàng Hóa tương ứng.</Text>}
           >
-            <Input placeholder="RCP001" />
+            <Input placeholder="VD: BTP-COM-GA" />
           </Form.Item>
 
           <Form.Item
@@ -274,7 +278,7 @@ export default function RecipesPage() {
             label="Tên công thức"
             rules={[{ required: true, message: 'Vui lòng nhập tên công thức' }]}
           >
-            <Input placeholder="Cơm chiên trứng" />
+            <Input placeholder="VD: Cơm gà xối mỡ" />
           </Form.Item>
 
           <Form.Item
@@ -338,7 +342,7 @@ export default function RecipesPage() {
                         filterOption={(input, option) =>
                           (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                         }
-                        options={items.map((it) => ({
+                        options={(Array.isArray(items) ? items : []).map((it) => ({
                           value: it.id,
                           label: `[${it.code}] ${it.name}`,
                         }))}

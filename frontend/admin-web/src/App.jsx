@@ -298,6 +298,11 @@ function MainLayout() {
                 icon: <FileTextOutlined />,
                 label: <Link to="/kitchen/production">Kế hoạch sản xuất</Link>,
               },
+              {
+                key: "/manager/kitchen-inventory",
+                icon: <HomeOutlined />,
+                label: <Link to="/manager/kitchen-inventory">Tồn kho Bếp TT</Link>,
+              },
             ],
           },
         ]
@@ -522,7 +527,7 @@ function App() {
           <Route
             path="manager/kitchen-inventory"
             element={
-              <ProtectedRoute allowedRoles={["MANAGER", "ADMIN"]}>
+              <ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "KITCHEN_STAFF"]}>
                 <KitchenInventoryPage />
               </ProtectedRoute>
             }

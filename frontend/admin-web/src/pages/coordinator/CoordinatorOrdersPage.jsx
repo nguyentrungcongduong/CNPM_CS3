@@ -34,6 +34,7 @@ import {
   InfoCircleOutlined,
 } from '@ant-design/icons';
 import { coordinatorOrderService } from '../../api/coordinatorOrderService';
+import { kitchenService } from '../../api/kitchenService';
 import { OrderStatusBadge, OrderStatusSteps } from '../../components/OrderStatus';
 import { ORDER_STATUS, STATUS_LABELS } from '../../constants/orderStatus';
 
@@ -324,6 +325,77 @@ function AdjustQuantitiesModal({ open, order, onClose, onSuccess }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Modal: Tùy chỉnh Xác nhận Đơn hàng (Gán Bếp Trung Tâm)
+// ─────────────────────────────────────────────────────────────────────────
+function ConfirmOrderModal({ open, order, kitchens, onClose, onSuccess }) {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      form.resetFields();
+    }
+  }, [open, form]);
+
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
+      await coordinatorOrderService.confirm(order.id, { 
+         warehouse_id: values.warehouse_id,
+         note: values.note,
+      });
+      message.success('Đã xác nhận đơn hàng và gán Bếp Trung Tâm thành công');
+      onSuccess?.();
+      onClose();
+    } catch (e) {
+      // error shown by axios interceptor
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!order) return null;
+
+  return (
+    <Modal
+      open={open}
+      title={
+        <Space>
+          <CheckCircleOutlined style={{ color: '#52c41a' }} />
+          Xác nhận đơn và Gán Bếp – {order.order_code}
+        </Space>
+      }
+      onCancel={onClose}
+      onOk={handleOk}
+      okText="Xác nhận"
+      cancelText="Hủy"
+      confirmLoading={loading}
+      destroyOnClose
+    >
+      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item 
+          name="warehouse_id" 
+          label="Chọn Bếp Trung Tâm phụ trách" 
+          rules={[{ required: true, message: 'Vui lòng chọn Bếp Trung Tâm!' }]}
+        >
+          <Select placeholder="-- Chọn Bếp thiết lập sản xuất --">
+            {kitchens.map(k => (
+              <Select.Option key={k.id} value={k.id}>
+                {k.name} ({k.code})
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <Form.Item name="note" label="Ghi chú (Tùy chọn)">
+          <Input.TextArea rows={2} placeholder="Nhập ghi chú cho Bếp (nếu có)..." />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────────────────────
 export default function CoordinatorOrdersPage() {
@@ -335,6 +407,14 @@ export default function CoordinatorOrdersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustTarget, setAdjustTarget] = useState(null);
+
+  const [kitchens, setKitchens] = useState([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+
+  useEffect(() => {
+    kitchenService.getList().then(res => setKitchens(res.data || []));
+  }, []);
 
   const fetchOrders = useCallback(async (page = 1) => {
     setLoading(true);
@@ -354,18 +434,8 @@ export default function CoordinatorOrdersPage() {
 
   // ---------- Xác nhận ----------
   const handleConfirm = (record) => {
-    Modal.confirm({
-      title: 'Xác nhận đơn hàng',
-      icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-      content: `Xác nhận đơn ${record.order_code}? Đơn sẽ được chuyển sang bếp sản xuất.`,
-      okText: 'Xác nhận',
-      cancelText: 'Hủy',
-      async onOk() {
-        await coordinatorOrderService.confirm(record.id);
-        message.success('Đã xác nhận đơn hàng');
-        fetchOrders(pagination.current);
-      },
-    });
+    setConfirmTarget(record);
+    setConfirmOpen(true);
   };
 
   // ---------- Từ chối ----------
@@ -648,6 +718,15 @@ export default function CoordinatorOrdersPage() {
         open={adjustOpen}
         order={adjustTarget}
         onClose={() => { setAdjustOpen(false); setAdjustTarget(null); }}
+        onSuccess={() => fetchOrders(pagination.current)}
+      />
+
+      {/* Modal Xác nhận đơn & Chọn Bếp Trung Tâm */}
+      <ConfirmOrderModal
+        open={confirmOpen}
+        order={confirmTarget}
+        kitchens={kitchens}
+        onClose={() => { setConfirmOpen(false); setConfirmTarget(null); }}
         onSuccess={() => fetchOrders(pagination.current)}
       />
     </>

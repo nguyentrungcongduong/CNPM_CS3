@@ -121,6 +121,12 @@ export default function UsersPage() {
       render: (_, rec) => rec.store?.name || <span style={{ color: '#bbb' }}>—</span>
     },
     {
+      title: 'Bếp Trung Tâm', key: 'warehouse',
+      render: (_, rec) => rec.warehouse
+        ? <Tag color="volcano">{rec.warehouse.name}</Tag>
+        : <span style={{ color: '#bbb' }}>—</span>
+    },
+    {
       title: 'Trạng thái', dataIndex: 'status', key: 'status',
       render: (s) => <Badge status={STATUS_COLORS[s]} text={STATUS_LABELS[s] || s} />
     },
