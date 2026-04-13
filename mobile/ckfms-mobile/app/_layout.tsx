@@ -13,9 +13,11 @@ export default function RootLayout() {
     const notificationListener = useRef<Notifications.Subscription | undefined | any>(undefined);
     const responseListener = useRef<Notifications.Subscription | undefined | any>(undefined);
 
+    const notificationSetupDone = useRef(false);
+
     useEffect(() => {
-        // Setup push notifications
-        // Chạy lại mỗi khi đổi trang, để đảm bảo sau khi login thì setup thành công
+        // Chỉ setup 1 lần sau khi đăng nhập
+        if (notificationSetupDone.current) return;
         setupNotifications();
     }, [pathname]);
 
@@ -53,6 +55,7 @@ export default function RootLayout() {
         const expoPushToken = await notificationService.registerForPushNotifications();
         if (expoPushToken) {
             await notificationService.savePushTokenToServer(expoPushToken);
+            notificationSetupDone.current = true; // đánh dấu đã setup xong
         }
     }
 

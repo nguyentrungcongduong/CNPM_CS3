@@ -33,11 +33,6 @@ export const notificationService = {
      * Xin quyền notification và lấy Expo Push Token
      */
     async registerForPushNotifications(): Promise<string | null> {
-        // TẮT THÔNG BÁO ĐIỆN THOẠI - Trả về null ngay để tránh lỗi
-        console.log('[Notification] Thông báo push đã bị tắt trong cấu hình');
-        return null;
-
-        // Code dưới đây sẽ không bao giờ chạy:
         if (isExpoGo) {
             console.warn(
                 '[Notification] Không thể lấy Expo Push Token vì bạn đang chạy bằng Expo Go (bị loại bỏ từ SDK 53). Vui lòng dùng thư mục Development Build nếu muốn test tính năng này.'
@@ -77,7 +72,9 @@ export const notificationService = {
 
         try {
             const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+                projectId: process.env.EXPO_PUBLIC_PROJECT_ID
+                    ?? Constants.expoConfig?.extra?.eas?.projectId
+                    ?? 'c3fa82f0-94c5-454d-ade0-111dd1a052e1',
             });
             const expoPushToken = tokenData.data;
             console.log('[Notification] Expo Push Token:', expoPushToken);
