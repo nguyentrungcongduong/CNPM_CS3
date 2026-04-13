@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, Pressable } from "react-native";
-import { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useRouter } from "expo-router";
 import { tokenStorage } from "@/services/token.storage";
 import { authService } from "@/services/auth.service";
@@ -18,6 +18,7 @@ export default function HomeScreen() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     tokenStorage.getToken().then((token) => {
@@ -58,6 +59,25 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [meRes, dashRes] = await Promise.all([
+        authService.getMe(),
+        api.get("/store/dashboard"),
+      ]);
+      setMe(meRes);
+      const data = dashRes?.data;
+      setSummary(data?.summary || summary);
+      setRecentOrders(data?.recent_orders || []);
+      setAlerts(data?.alerts || []);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   const statusLabel = (status: string) => {
     switch (status) {
       case "SUBMITTED":
@@ -91,7 +111,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-50">
+    <ScrollView
+      className="flex-1 bg-slate-50"
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1d4ed8"]} />
+      }
+    >
       <View className="p-5">
         {/* Welcome Banner */}
         <View className="bg-blue-700 rounded-2xl p-5 mb-5 shadow-md">

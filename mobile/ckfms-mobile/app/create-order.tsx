@@ -39,9 +39,7 @@ export default function CreateOrderScreen() {
     try {
       // Mobile dùng chung catalog items cho Manager.
       // ItemController@index trả về: { success: true, data: [...] }
-      const response = await api.get("/manager/items", {
-        params: { type: "INGREDIENT" },
-      });
+      const response = await api.get("/manager/items");
       const payload = response?.data;
       const list = payload?.data ?? payload ?? [];
       setItems(Array.isArray(list) ? list : []);
