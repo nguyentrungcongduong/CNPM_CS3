@@ -267,10 +267,32 @@ export default function RecipesPage() {
           <Form.Item
             name="code"
             label="Mã công thức"
-            rules={[{ required: true, message: 'Vui lòng nhập mã công thức' }]}
-            extra={<Text type="warning" style={{fontSize: 12}}>Lưu ý: Để Bếp TT tính toán được, Mã công thức này PHẢI trùng khớp 100% với Mã Hàng Hóa tương ứng.</Text>}
+            rules={[{ required: true, message: 'Vui lòng chọn Hàng Hóa tương ứng' }]}
+            extra={
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Chọn Hàng Hóa — Mã sẽ được dùng để Bếp TT tính toán nguyên liệu.
+              </Text>
+            }
           >
-            <Input placeholder="VD: BTP-COM-GA" />
+            <Select
+              loading={itemsLoading}
+              placeholder="-- Chọn Hàng Hóa tương ứng --"
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={(Array.isArray(items) ? items : []).map((it) => ({
+                value: it.code,
+                label: `[${it.code}] ${it.name}`,
+              }))}
+              onChange={(code) => {
+                // Tự điền tên công thức theo tên Hàng Hóa (nếu ô tên chưa nhập)
+                if (!form.getFieldValue('name')) {
+                  const matched = items.find((it) => it.code === code);
+                  if (matched) form.setFieldValue('name', matched.name);
+                }
+              }}
+            />
           </Form.Item>
 
           <Form.Item
