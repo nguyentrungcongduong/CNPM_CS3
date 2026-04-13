@@ -40,6 +40,23 @@ class KitchenController extends Controller
     }
 
     /**
+     * GET /api/admin/kitchens/list
+     * For dropdowns
+     */
+    public function list()
+    {
+        $kitchens = Warehouse::where('type', 'KITCHEN')
+            ->where('status', 'ACTIVE')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'address']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $kitchens,
+        ]);
+    }
+
+    /**
      * POST /api/admin/kitchens
      */
     public function store(Request $request)

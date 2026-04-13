@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Common access for admin routes that other roles need (e.g. dropdown lists)
     Route::prefix('admin')->group(function () {
         Route::get('/stores/list', [App\Http\Controllers\Api\StoreController::class, 'list']);
+        Route::get('/kitchens/list', [App\Http\Controllers\Api\KitchenController::class, 'list']);
     });
 
     // ---- Admin Routes (ADMIN only) ----

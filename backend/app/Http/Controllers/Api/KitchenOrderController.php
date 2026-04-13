@@ -58,6 +58,12 @@ class KitchenOrderController extends Controller
 
         $query = Order::with(['store', 'items.item', 'creator', 'confirmedBy']);
 
+        // Chỉ lấy đơn của bếp mình (theo warehouse_id của user)
+        $user = $request->user();
+        if ($user->warehouse_id) {
+            $query->where('warehouse_id', $user->warehouse_id);
+        }
+
         // Exclude orders already processed by kitchen (demo cleanup / operational queue)
         $query->whereNull('kitchen_processed_at');
 
