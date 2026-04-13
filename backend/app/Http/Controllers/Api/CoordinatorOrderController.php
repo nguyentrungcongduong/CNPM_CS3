@@ -189,12 +189,18 @@ class CoordinatorOrderController extends Controller
         }
 
         $validated = $request->validate([
+            'warehouse_id' => [
+                'required',
+                \Illuminate\Validation\Rule::exists('warehouses', 'id')->where('type', 'KITCHEN'),
+            ],
             'note' => 'nullable|string|max:1000',
         ]);
 
         $order->status       = Order::STATUS_CONFIRMED;
         $order->confirmed_by = $request->user()->id;
         $order->confirmed_at = now();
+        $order->warehouse_id = $validated['warehouse_id'];
+        
         if (!empty($validated['note'])) {
             $order->note = $validated['note'];
         }
