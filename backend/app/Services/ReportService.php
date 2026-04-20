@@ -303,7 +303,8 @@ class ReportService
 
         return match ($driver) {
             'sqlite' => "strftime('%Y-%m', {$column})",
-            default => "DATE_FORMAT({$column}, '%Y-%m')",
+            'pgsql'  => "TO_CHAR({$column}, 'YYYY-MM')",
+            default  => "DATE_FORMAT({$column}, '%Y-%m')",
         };
     }
 

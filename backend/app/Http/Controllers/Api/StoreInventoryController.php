@@ -221,6 +221,13 @@ class StoreInventoryController extends Controller
                     ->first();
 
                 if ($kitchenInventory) {
+                    // Kiểm tra đủ hàng trước khi trừ
+                    if ($kitchenInventory->quantity_available < $validated['quantity']) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Bếp trung tâm không đủ hàng để xuất. Tồn kho hiện tại: {$kitchenInventory->quantity_available}, cần: {$validated['quantity']}. Vui lòng liên hệ Manager nhập thêm kho.",
+                        ], 422);
+                    }
                     $kitchenOldQty = $kitchenInventory->quantity_on_hand;
                     $kitchenInventory->quantity_on_hand -= $validated['quantity'];
                     $kitchenInventory->quantity_available -= $validated['quantity'];

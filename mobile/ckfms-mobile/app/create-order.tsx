@@ -11,6 +11,77 @@ import {
 import { useRouter } from "expo-router";
 import api from "@/services/api";
 
+// ── Vertical searchable item picker ──────────────────────────────
+function ItemPicker({ items, selectedId, onSelect }: { items: any[]; selectedId: string; onSelect: (id: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const filtered = query.trim()
+    ? items.filter((i) =>
+        i.name.toLowerCase().includes(query.toLowerCase()) ||
+        (i.code ?? "").toLowerCase().includes(query.toLowerCase())
+      )
+    : items;
+
+  const selected = items.find((i) => i.id.toString() === selectedId);
+
+  return (
+    <View className="mb-3">
+      {/* Search / selected display */}
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 flex-row justify-between items-center"
+      >
+        <Text className={selected ? "text-slate-800 font-medium" : "text-slate-400"}>
+          {selected ? `${selected.name} (${selected.unit})` : "Chọn nguyên liệu..."}
+        </Text>
+        <Text className="text-slate-400">{open ? "▲" : "▼"}</Text>
+      </Pressable>
+
+      {open && (
+        <View className="border border-slate-200 rounded-lg mt-1 bg-white shadow-sm overflow-hidden">
+          {/* Search input */}
+          <View className="border-b border-slate-100 px-3 py-2">
+            <TextInput
+              placeholder="Tìm nguyên liệu..."
+              value={query}
+              onChangeText={setQuery}
+              autoFocus
+              className="text-slate-700"
+            />
+          </View>
+          {/* List — dùng ScrollView thay FlatList để tránh lỗi VirtualizedList nested */}
+          <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+            {filtered.length === 0 ? (
+              <Text className="text-slate-400 italic text-center py-4">Không tìm thấy nguyên liệu</Text>
+            ) : (
+              filtered.map((item) => (
+                <Pressable
+                  key={item.id.toString()}
+                  onPress={() => {
+                    onSelect(item.id.toString());
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  style={{ backgroundColor: selectedId === item.id.toString() ? "#eff6ff" : "transparent" }}
+                  className="px-4 py-3 border-b border-slate-50 flex-row justify-between items-center"
+                >
+                  <Text className={selectedId === item.id.toString() ? "text-blue-700 font-semibold" : "text-slate-700"}>
+                    {item.name}
+                  </Text>
+                  <Text className="text-slate-400 text-sm">{item.unit}</Text>
+                </Pressable>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+// ─────────────────────────────────────────────────────────────────
+
+
 export default function CreateOrderScreen() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
@@ -200,32 +271,12 @@ export default function CreateOrderScreen() {
           </Text>
 
           <Text className="text-sm text-slate-500 mb-1">Chọn nguyên liệu</Text>
-          {/* Basic Picker fallback for react-native without external libs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-3"
-          >
-            <View className="flex-row gap-2">
-              {items.map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => setCurrentItemId(item.id.toString())}
-                  className={`px-3 py-2 border rounded-full ${currentItemId === item.id.toString() ? "bg-blue-600 border-blue-600" : "bg-slate-50 border-slate-200"}`}
-                >
-                  <Text
-                    className={
-                      currentItemId === item.id.toString()
-                        ? "text-white font-medium"
-                        : "text-slate-600"
-                    }
-                  >
-                    {item.name} ({item.unit})
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
+          <ItemPicker
+            items={items}
+            selectedId={currentItemId}
+            onSelect={setCurrentItemId}
+          />
+
 
           <Text className="text-sm text-slate-500 mb-1">Số lượng</Text>
           <View className="flex-row gap-2">

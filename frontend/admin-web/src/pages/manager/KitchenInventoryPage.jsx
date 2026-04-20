@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Input, Select, Button, Row, Col, Typography, Space, Badge, Statistic, Tabs, Progress, Tooltip, Alert } from 'antd';
-import { SearchOutlined, ReloadOutlined, WarningOutlined, HomeOutlined, SwapOutlined, BarcodeOutlined, FieldTimeOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Input, Select, Button, Row, Col, Typography, Space, Badge, Statistic, Tabs, Progress, Tooltip, Alert, Modal, Form, InputNumber, DatePicker, message } from 'antd';
+import { SearchOutlined, ReloadOutlined, WarningOutlined, HomeOutlined, SwapOutlined, BarcodeOutlined, FieldTimeOutlined, PlusOutlined } from '@ant-design/icons';
 import { inventoryService } from '../../api/inventoryService';
+import { itemService } from '../../api/itemService';
 
 const { Title, Text } = Typography;
 
@@ -100,8 +101,91 @@ const TxTable = ({ data, loading, pagination, onPageChange }) => {
   return <Table rowKey="id" columns={columns} dataSource={data} loading={loading} size="middle" pagination={{ ...pagination, showTotal: (t) => `Tổng ${t} GD`, onChange: onPageChange }} />;
 };
 
+// ── Modal Nhập kho ────────────────────────────────────────────────
+function ImportBatchModal({ open, kitchens, onClose, onSuccess }) {
+  const [form] = Form.useForm();
+  const [items, setItems] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) itemService.getItems({ per_page: 200 }).then(res => setItems(res.data?.data || res.data || []));
+  }, [open]);
+
+  const handleOk = async () => {
+    try {
+      const vals = await form.validateFields();
+      setSaving(true);
+      await inventoryService.createBatch({
+        item_id:      vals.item_id,
+        warehouse_id: vals.warehouse_id,
+        quantity:     vals.quantity,
+        mfg_date:     vals.mfg_date?.format('YYYY-MM-DD'),
+        expiry_date:  vals.expiry_date?.format('YYYY-MM-DD'),
+        note:         vals.note,
+      });
+      message.success('Nhập kho thành công! Tồn kho đã được cập nhật.');
+      form.resetFields();
+      onSuccess();
+      onClose();
+    } catch { /* validation / API error */ }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal
+      title={<span><PlusOutlined style={{ color: '#52c41a', marginRight: 8 }} />Nhập kho Bếp Trung Tâm</span>}
+      open={open}
+      onOk={handleOk}
+      onCancel={onClose}
+      okText="Nhập kho"
+      cancelText="Hủy"
+      confirmLoading={saving}
+      width={520}
+      destroyOnHidden
+    >
+      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item name="warehouse_id" label="Bếp Trung Tâm" rules={[{ required: true, message: 'Chọn bếp' }]}>
+          <Select placeholder="Chọn bếp trung tâm..." options={kitchens.map(k => ({ value: k.id, label: `${k.name}` }))} />
+        </Form.Item>
+        <Form.Item name="item_id" label="Hàng hóa" rules={[{ required: true, message: 'Chọn hàng' }]}>
+          <Select
+            placeholder="Tìm và chọn hàng hóa..."
+            showSearch
+            optionFilterProp="label"
+            options={items.map(i => ({ value: i.id, label: `[${i.code}] ${i.name}` }))}
+          />
+        </Form.Item>
+        <Row gutter={16}>
+          <Col span={24}>
+            <Form.Item name="quantity" label="Số lượng nhập" rules={[{ required: true, message: 'Nhập số lượng' }, { type: 'number', min: 0.001, message: 'Phải > 0' }]}>
+              <InputNumber style={{ width: '100%' }} min={0.001} step={1} placeholder="Ví dụ: 100" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="mfg_date" label="Ngày sản xuất">
+              <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày SX" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="expiry_date" label="Hạn sử dụng">
+              <DatePicker style={{ width: '100%' }} placeholder="Chọn HSD" />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Form.Item name="note" label="Ghi chú">
+          <Input.TextArea rows={2} placeholder="Ghi chú thêm (tùy chọn)..." />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function KitchenInventoryPage() {
   const [activeTab, setActiveTab] = useState('stock');
+  const [importOpen, setImportOpen] = useState(false);
   const [stock, setStock] = useState([]);
   const [txs, setTxs] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -163,7 +247,18 @@ export default function KitchenInventoryPage() {
 
   return (
     <>
-      <Title level={3} style={{ marginBottom: 16 }}>Tồn kho Bếp Trung Tâm</Title>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>Tồn kho Bếp Trung Tâm</Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="large"
+          style={{ background: '#52c41a', borderColor: '#52c41a' }}
+          onClick={() => setImportOpen(true)}
+        >
+          Nhập kho
+        </Button>
+      </Row>
       <Row gutter={12} style={{ marginBottom: 20 }}>
         <Col flex="1 1 200px">
           <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -270,6 +365,13 @@ export default function KitchenInventoryPage() {
         },
         { key: 'tx', label: <span><SwapOutlined /> Lịch sử giao dịch</span>, children: <Card variant="borderless" style={{ borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}><TxTable data={txs} loading={loading} pagination={txPagi} onPageChange={(page) => fetchTx(page)} /></Card> },
       ]} />
+
+      <ImportBatchModal
+        open={importOpen}
+        kitchens={kitchens}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => { fetchStock(1); fetchBatches(1); }}
+      />
     </>
   );
 }

@@ -4,7 +4,7 @@ import { tokenStorage } from './token.storage';
 // ===== CẤU HÌNH BASE URL =====
 // Dùng biến môi trường từ file `.env` (không đưa lên Git) cho bảo mật
 // IP máy tính: 10.195.242.159 (4G) - Port 8001
-const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://10.195.242.159:8001/api').trim();
+const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.161.1:8001/api').trim();
 
 console.log('[API] Base URL:', BASE_URL);
 
